@@ -14,6 +14,7 @@ const SUPABASE_PUBLISHABLE_KEY =
   "sb_publishable_1dAPRqeGHhaD2Vz9qU1_9w_BBKBB8Rn";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_PUBLISHABLE_KEY;
+const HAS_SUPABASE_SERVICE_ROLE_KEY = Boolean(String(SUPABASE_SERVICE_ROLE_KEY || "").trim());
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: false,
@@ -75,6 +76,19 @@ function normalizeEmail(email) {
 function formatSupabaseError(error, fallbackMessage) {
   const errorMessage = String(error?.message || "").trim();
   return errorMessage || fallbackMessage;
+}
+
+function getSupabaseWriteConfigErrorMessage() {
+  return "Server configuration error: set SUPABASE_SERVICE_ROLE_KEY for backend writes.";
+}
+
+function isSupabaseWritePermissionError(error) {
+  const message = formatSupabaseError(error, "").toLowerCase();
+  return (
+    message.includes("row-level security") ||
+    message.includes("permission denied") ||
+    message.includes("not allowed")
+  );
 }
 
 function getSessionExpirationDate(sessionData) {
@@ -192,6 +206,10 @@ async function getAllRecommendations() {
 }
 
 async function ensureDefaultRecommendations() {
+  if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(getSupabaseWriteConfigErrorMessage());
+  }
+
   const { count, error: countError } = await supabase
     .from("recommendations")
     .select("id", { count: "exact", head: true });
@@ -476,6 +494,10 @@ async function requireAdmin(req, res, next) {
 }
 
 async function ensureDefaultAdminUser() {
+  if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error(getSupabaseWriteConfigErrorMessage());
+  }
+
   const adminEmail = DEFAULT_ADMIN.email.toLowerCase();
   const passwordHash = bcrypt.hashSync(DEFAULT_ADMIN.password, 10);
 
@@ -541,6 +563,10 @@ Promise.all([ensureDefaultAdminUser(), ensureDefaultRecommendations()]).catch((e
 });
 
 app.post("/api/auth/register", async (req, res) => {
+  if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: getSupabaseWriteConfigErrorMessage() });
+  }
+
   const name = String(req.body.name || "").trim();
   const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || "");
@@ -584,6 +610,10 @@ app.post("/api/auth/register", async (req, res) => {
 
     return res.status(201).json({ name, email });
   } catch (error) {
+    if (isSupabaseWritePermissionError(error)) {
+      return res.status(500).json({ error: getSupabaseWriteConfigErrorMessage() });
+    }
+
     const duplicateEmailCodes = new Set(["23505", "409"]);
     if (duplicateEmailCodes.has(String(error.code || "")) || String(error.message).toLowerCase().includes("duplicate")) {
       const existingUser = await getUserByEmail(email);
@@ -622,7 +652,12 @@ app.post("/api/auth/login", async (req, res) => {
     email === DEFAULT_ADMIN.email.toLowerCase() &&
     password === DEFAULT_ADMIN.password
   ) {
-    await ensureDefaultAdminUser();
+    try {
+      await ensureDefaultAdminUser();
+    } catch {
+      return res.status(500).json({ error: getSupabaseWriteConfigErrorMessage() });
+    }
+
     const adminUser = await getUserByEmail(email);
 
     if (adminUser) {
@@ -697,6 +732,10 @@ app.get("/api/auth/me", async (req, res) => {
 });
 
 app.post("/api/auth/accept-terms", requireAuth, async (req, res) => {
+  if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: getSupabaseWriteConfigErrorMessage() });
+  }
+
   const termsAccepted = Boolean(req.body.termsAccepted);
   const termsVersion = String(req.body.termsVersion || "").trim();
 
@@ -800,6 +839,10 @@ app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
 });
 
 app.post("/api/admin/recommendations", requireAdmin, async (req, res) => {
+  if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: getSupabaseWriteConfigErrorMessage() });
+  }
+
   const ticker = String(req.body.ticker || "").trim().toUpperCase();
   const company = String(req.body.company || "").trim();
   const action = String(req.body.action || "").trim().toUpperCase();
@@ -831,6 +874,10 @@ app.post("/api/admin/recommendations", requireAdmin, async (req, res) => {
 });
 
 app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
+  if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: getSupabaseWriteConfigErrorMessage() });
+  }
+
   const id = Number(req.params.id);
   const ticker = String(req.body.ticker || "").trim().toUpperCase();
   const company = String(req.body.company || "").trim();
@@ -894,6 +941,10 @@ app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
 });
 
 app.delete("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
+  if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
+    return res.status(500).json({ error: getSupabaseWriteConfigErrorMessage() });
+  }
+
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
