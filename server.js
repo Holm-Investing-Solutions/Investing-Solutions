@@ -15,6 +15,7 @@ const DEFAULT_ADMIN = {
 };
 
 const LEGACY_DEFAULT_ADMIN_EMAILS = ["brodyholm73@gmail.com"];
+const TERMS_VERSION = "1.1";
 
 const dataDir = path.join(__dirname, "data");
 if (!fs.existsSync(dataDir)) {
@@ -245,6 +246,22 @@ if (!hasEmailColumn) {
   db.exec("UPDATE users SET email = username WHERE email IS NULL AND username IS NOT NULL");
 }
 
+function ensureUserTermsAcceptanceSupport() {
+  const columns = db.prepare("PRAGMA table_info(users)").all();
+  const hasTermsAcceptedAtColumn = columns.some((column) => column.name === "terms_accepted_at");
+  const hasTermsVersionColumn = columns.some((column) => column.name === "terms_version_accepted");
+
+  if (!hasTermsAcceptedAtColumn) {
+    db.exec("ALTER TABLE users ADD COLUMN terms_accepted_at TEXT");
+  }
+
+  if (!hasTermsVersionColumn) {
+    db.exec("ALTER TABLE users ADD COLUMN terms_version_accepted TEXT");
+  }
+}
+
+ensureUserTermsAcceptanceSupport();
+
 db.exec(
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL"
 );
@@ -297,6 +314,37 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function hasAcceptedCurrentTerms(user) {
+  const acceptedAt = String(user?.terms_accepted_at || "").trim();
+  const acceptedVersion = String(user?.terms_version_accepted || "").trim();
+  return Boolean(acceptedAt) && acceptedVersion === TERMS_VERSION;
+}
+
+function getSessionUserWithTerms(userId) {
+  return db
+    .prepare(
+      "SELECT id, name, email, terms_accepted_at, terms_version_accepted FROM users WHERE id = ?"
+    )
+    .get(userId);
+}
+
+function requireAcceptedTerms(req, res, next) {
+  const user = getSessionUserWithTerms(req.session.userId);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  if (!hasAcceptedCurrentTerms(user)) {
+    return res.status(403).json({
+      error: "Please accept the latest Terms and Conditions to continue.",
+      requireTermsAcceptance: true,
+      termsVersion: TERMS_VERSION,
+    });
+  }
+
+  next();
+}
+
 function getAdminEmails() {
   const configured = String(process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
     .split(",")
@@ -314,6 +362,19 @@ function isAdminEmail(email) {
 function requireAdmin(req, res, next) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const user = getSessionUserWithTerms(req.session.userId);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  if (!hasAcceptedCurrentTerms(user)) {
+    return res.status(403).json({
+      error: "Please accept the latest Terms and Conditions to continue.",
+      requireTermsAcceptance: true,
+      termsVersion: TERMS_VERSION,
+    });
   }
 
   if (!isAdminEmail(req.session.email)) {
@@ -378,6 +439,8 @@ app.post("/api/auth/register", async (req, res) => {
   const name = String(req.body.name || "").trim();
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "");
+  const termsAccepted = Boolean(req.body.termsAccepted);
+  const termsVersion = String(req.body.termsVersion || "").trim();
 
   if (name.length < 2 || !email.includes("@") || password.length < 8) {
     return res
@@ -385,17 +448,24 @@ app.post("/api/auth/register", async (req, res) => {
       .json({ error: "Name, valid email, and password (8+ chars) are required." });
   }
 
+  if (!termsAccepted || termsVersion !== TERMS_VERSION) {
+    return res
+      .status(400)
+      .json({ error: `You must agree to Terms and Conditions version ${TERMS_VERSION}.` });
+  }
+
   try {
     const passwordHash = await bcrypt.hash(password, 10);
+    const termsAcceptedAt = new Date().toISOString();
     const result = hasLegacyUsernameColumn
       ? db
           .prepare(
-            "INSERT INTO users (name, email, username, password_hash) VALUES (?, ?, ?, ?)"
+            "INSERT INTO users (name, email, username, password_hash, terms_accepted_at, terms_version_accepted) VALUES (?, ?, ?, ?, ?, ?)"
           )
-          .run(name, email, email, passwordHash)
+          .run(name, email, email, passwordHash, termsAcceptedAt, TERMS_VERSION)
       : db
-          .prepare("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)")
-          .run(name, email, passwordHash);
+          .prepare("INSERT INTO users (name, email, password_hash, terms_accepted_at, terms_version_accepted) VALUES (?, ?, ?, ?, ?)")
+          .run(name, email, passwordHash, termsAcceptedAt, TERMS_VERSION);
 
     req.session.userId = result.lastInsertRowid;
     req.session.name = name;
@@ -414,10 +484,13 @@ app.post("/api/auth/register", async (req, res) => {
           req.session.userId = existingUser.id;
           req.session.name = existingUser.name || "Member";
           req.session.email = existingUser.email;
+          const existingUserWithTerms = getSessionUserWithTerms(existingUser.id);
           return res.status(200).json({
             name: req.session.name,
             email: req.session.email,
             alreadyExists: true,
+            mustAcceptTerms: !hasAcceptedCurrentTerms(existingUserWithTerms),
+            termsVersionRequired: TERMS_VERSION,
           });
         }
       }
@@ -439,19 +512,24 @@ app.post("/api/auth/login", async (req, res) => {
   ) {
     ensureDefaultAdminUser();
     const adminUser = db
-      .prepare("SELECT id, name, email FROM users WHERE email = ?")
+      .prepare("SELECT id, name, email, terms_accepted_at, terms_version_accepted FROM users WHERE email = ?")
       .get(email);
 
     if (adminUser) {
       req.session.userId = adminUser.id;
       req.session.name = adminUser.name || DEFAULT_ADMIN.name;
       req.session.email = adminUser.email;
-      return res.json({ name: req.session.name, email: req.session.email });
+      return res.json({
+        name: req.session.name,
+        email: req.session.email,
+        mustAcceptTerms: !hasAcceptedCurrentTerms(adminUser),
+        termsVersionRequired: TERMS_VERSION,
+      });
     }
   }
 
   const user = db
-    .prepare("SELECT id, name, email, password_hash FROM users WHERE email = ?")
+    .prepare("SELECT id, name, email, password_hash, terms_accepted_at, terms_version_accepted FROM users WHERE email = ?")
     .get(email);
 
   if (!user) {
@@ -471,7 +549,12 @@ app.post("/api/auth/login", async (req, res) => {
   req.session.name = user.name || "Member";
   req.session.email = user.email;
 
-  return res.json({ name: req.session.name, email: req.session.email });
+  return res.json({
+    name: req.session.name,
+    email: req.session.email,
+    mustAcceptTerms: !hasAcceptedCurrentTerms(user),
+    termsVersionRequired: TERMS_VERSION,
+  });
 });
 
 app.post("/api/auth/logout", (req, res) => {
@@ -484,14 +567,46 @@ app.get("/api/auth/me", (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+
+  const user = getSessionUserWithTerms(req.session.userId);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   return res.json({
-    name: req.session.name,
-    email: req.session.email,
-    isAdmin: isAdminEmail(req.session.email),
+    name: user.name || req.session.name || "Member",
+    email: user.email || req.session.email,
+    isAdmin: isAdminEmail(user.email || req.session.email),
+    mustAcceptTerms: !hasAcceptedCurrentTerms(user),
+    termsVersionRequired: TERMS_VERSION,
   });
 });
 
-app.get("/api/recommendations", requireAuth, async (req, res) => {
+app.post("/api/auth/accept-terms", requireAuth, (req, res) => {
+  const termsAccepted = Boolean(req.body.termsAccepted);
+  const termsVersion = String(req.body.termsVersion || "").trim();
+
+  if (!termsAccepted || termsVersion !== TERMS_VERSION) {
+    return res.status(400).json({
+      error: `You must accept Terms and Conditions version ${TERMS_VERSION}.`,
+    });
+  }
+
+  const termsAcceptedAt = new Date().toISOString();
+  const result = db
+    .prepare(
+      "UPDATE users SET terms_accepted_at = ?, terms_version_accepted = ? WHERE id = ?"
+    )
+    .run(termsAcceptedAt, TERMS_VERSION, req.session.userId);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: "User not found." });
+  }
+
+  return res.json({ ok: true, termsAcceptedAt, termsVersionAccepted: TERMS_VERSION });
+});
+
+app.get("/api/recommendations", requireAuth, requireAcceptedTerms, async (req, res) => {
   const stocks = db
     .prepare(
       "SELECT id, ticker, company, action, rationale, sector, locked_change_percent as lockedChangePercent, updated_at as updatedAt FROM recommendations ORDER BY id DESC"
@@ -517,7 +632,9 @@ app.get("/api/admin/recommendations", requireAdmin, async (req, res) => {
 
 app.get("/api/admin/users", requireAdmin, (req, res) => {
   const users = db
-    .prepare("SELECT id, name, email, created_at as createdAt FROM users ORDER BY id DESC")
+    .prepare(
+      "SELECT id, name, email, created_at as createdAt, terms_accepted_at as termsAcceptedAt, terms_version_accepted as termsVersionAccepted FROM users ORDER BY id DESC"
+    )
     .all();
 
   return res.json({ users });
@@ -628,7 +745,7 @@ app.delete("/api/admin/recommendations/:id", requireAdmin, (req, res) => {
   return res.json({ ok: true });
 });
 
-app.get("/api/stocks/:ticker/history", requireAuth, async (req, res) => {
+app.get("/api/stocks/:ticker/history", requireAuth, requireAcceptedTerms, async (req, res) => {
   const ticker = String(req.params.ticker || "")
     .trim()
     .toUpperCase();

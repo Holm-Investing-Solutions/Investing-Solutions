@@ -7,6 +7,7 @@ const stockDetailPage = document.getElementById("stockDetailPage");
 const adminPage = document.getElementById("adminPage");
 const marketCountdown = document.getElementById("marketCountdown");
 const authPanel = document.getElementById("authPanel");
+const termsAcceptancePage = document.getElementById("termsAcceptancePage");
 const homeNavBtn = document.getElementById("homeNavBtn");
 const whatIsInvestingNavBtn = document.getElementById("whatIsInvestingNavBtn");
 const investingInStocksNavBtn = document.getElementById("investingInStocksNavBtn");
@@ -23,6 +24,10 @@ const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
 const confirmPasswordRow = document.getElementById("confirmPasswordRow");
+const registerTermsSection = document.getElementById("registerTermsSection");
+const agreeTermsInput = document.getElementById("agreeTerms");
+const acceptUpdatedTermsInput = document.getElementById("acceptUpdatedTerms");
+const acceptTermsBtn = document.getElementById("acceptTermsBtn");
 const passwordVisibilityBtn = document.getElementById("passwordVisibilityBtn");
 const passwordEyeOpenIcon = passwordVisibilityBtn.querySelector(".eyeOpen");
 const passwordEyeClosedIcon = passwordVisibilityBtn.querySelector(".eyeClosed");
@@ -102,6 +107,8 @@ let graphPoints = [];
 let graphArea = null;
 let allRecommendations = [];
 let stocksTabView = "current";
+
+const TERMS_VERSION = "1.1";
 
 const SECTOR_OPTIONS = [
   "Communication Services",
@@ -217,6 +224,7 @@ function showPage(page) {
   stockDetailPage.classList.toggle("hidden", page !== "stockDetail");
   adminPage.classList.toggle("hidden", page !== "admin");
   authPanel.classList.toggle("hidden", page !== "auth");
+  termsAcceptancePage.classList.toggle("hidden", page !== "termsAcceptance");
   marketCountdown.classList.toggle("hidden", page !== "home");
   mainContainer.classList.toggle("authWide", page === "auth");
   mainContainer.classList.toggle("stocksWide", page === "stocks" || page === "stockDetail");
@@ -263,7 +271,7 @@ function setLoggedInUi(user) {
   welcomeText.textContent = `Welcome, ${user.name} (${user.email})`;
   setStocksTab(stocksTabView);
   stocksLockedMessage.classList.add("hidden");
-  adminNavBtn.classList.toggle("hidden", !user.isAdmin);
+  adminNavBtn.classList.toggle("hidden", !user.isAdmin || Boolean(user.mustAcceptTerms));
 }
 
 function setAuthMode(mode) {
@@ -274,6 +282,11 @@ function setAuthMode(mode) {
   authSubmitBtn.textContent = isRegister ? "Register" : "Log In";
   confirmPasswordRow.classList.toggle("hidden", !isRegister);
   confirmPasswordInput.required = isRegister;
+  registerTermsSection.classList.toggle("hidden", !isRegister);
+  agreeTermsInput.required = isRegister;
+  if (!isRegister) {
+    agreeTermsInput.checked = false;
+  }
   authSwitchText.textContent = isRegister ? "Already have an account?" : "Don't have an account?";
   switchAuthModeBtn.textContent = isRegister ? "Log In" : "Register";
 }
@@ -315,6 +328,8 @@ function setLoggedOutUi() {
   adminNavBtn.classList.add("hidden");
   passwordInput.value = "";
   confirmPasswordInput.value = "";
+  agreeTermsInput.checked = false;
+  acceptUpdatedTermsInput.checked = false;
   passwordInput.type = "password";
   confirmPasswordInput.type = "password";
   passwordEyeOpenIcon.classList.remove("hidden");
@@ -323,6 +338,20 @@ function setLoggedOutUi() {
   setAuthMode("login");
   setAdminTab("stocks");
   showPage("home");
+}
+
+function requiresTermsAcceptance() {
+  return Boolean(currentUser && currentUser.mustAcceptTerms);
+}
+
+function guardTermsAcceptance() {
+  if (!requiresTermsAcceptance()) {
+    return false;
+  }
+
+  showPage("termsAcceptance");
+  setMessage("Please accept the latest Terms and Conditions to continue.");
+  return true;
 }
 
 function setAdminTab(tab) {
@@ -1003,9 +1032,13 @@ async function api(path, options = {}) {
 async function loadAppData() {
   const user = await api("/api/auth/me");
   setLoggedInUi(user);
+  if (user.mustAcceptTerms) {
+    return { requiresTermsAcceptance: true };
+  }
   const recs = await api("/api/recommendations");
   allRecommendations = await enrichRecommendations(recs.stocks);
   applyStockFilter(false);
+  return { requiresTermsAcceptance: false };
 }
 
 function resetAdminForm() {
@@ -1025,7 +1058,7 @@ function renderAdminList(stocks) {
   const pastStocks = stocks.filter((stock) => isPastRecommendation(stock));
 
   if (!currentStocks.length) {
-    adminList.innerHTML = "<p>No recommendations yet.</p>";
+    adminList.innerHTML = "<p>No Stock Insights yet.</p>";
   }
 
   const stockMap = new Map(currentStocks.map((stock) => [Number(stock.id), stock]));
@@ -1057,7 +1090,7 @@ function renderAdminList(stocks) {
         const id = Number(editButton.getAttribute("data-edit-id"));
         const selected = stockMap.get(id);
         if (!selected) {
-          setMessage("Recommendation not found.");
+          setMessage("Stock Insight not found.");
           return;
         }
 
@@ -1067,7 +1100,7 @@ function renderAdminList(stocks) {
         adminAction.value = selected.action;
         adminSector.value = normalizeSectorName(selected.sector);
         adminRationale.value = selected.rationale;
-        setMessage("Loaded recommendation for editing.", false);
+        setMessage("Loaded Stock Insight for editing.", false);
       } catch (error) {
         setMessage(error.message);
       }
@@ -1079,7 +1112,7 @@ function renderAdminList(stocks) {
       const id = Number(deleteButton.getAttribute("data-delete-id"));
       try {
         await api(`/api/admin/recommendations/${id}`, { method: "DELETE" });
-        setMessage("Recommendation deleted.", false);
+        setMessage("Stock Insight deleted.", false);
         await loadAppData();
         await loadAdminData();
       } catch (error) {
@@ -1089,7 +1122,7 @@ function renderAdminList(stocks) {
   }
 
   if (!pastStocks.length) {
-    adminPastList.innerHTML = "<p>No past recommendations to delete.</p>";
+    adminPastList.innerHTML = "<p>No past Stock Insights to delete.</p>";
     return;
   }
 
@@ -1104,7 +1137,7 @@ function renderAdminList(stocks) {
       <p class="muted">Sector: ${normalizeSectorName(stock.sector)}</p>
       <p>${stock.rationale}</p>
       <div class="buttonRow">
-        <button type="button" data-delete-past-id="${stock.id}">Delete Past Recommendation</button>
+        <button type="button" data-delete-past-id="${stock.id}">Delete Past Stock Insight</button>
       </div>
     `;
 
@@ -1116,7 +1149,7 @@ function renderAdminList(stocks) {
       const id = Number(deleteButton.getAttribute("data-delete-past-id"));
       try {
         await api(`/api/admin/recommendations/${id}`, { method: "DELETE" });
-        setMessage("Past recommendation deleted.", false);
+        setMessage("Past Stock Insight deleted.", false);
         await loadAppData();
         await loadAdminData();
       } catch (error) {
@@ -1146,6 +1179,10 @@ function renderAdminUsers(users) {
       <strong>${displayName}</strong>
       <p class="muted">${user.email}</p>
       <p class="muted">Joined: ${new Date(user.createdAt).toLocaleDateString()}</p>
+      <p class="muted">Terms Accepted: ${
+        user.termsAcceptedAt ? new Date(user.termsAcceptedAt).toLocaleString() : "Not recorded"
+      }</p>
+      <p class="muted">Terms Version: ${user.termsVersionAccepted || "Not recorded"}</p>
       <div class="buttonRow">
         <button type="button" class="secondary" data-delete-user-id="${user.id}" ${deleteDisabledAttr}>${deleteLabel}</button>
       </div>
@@ -1212,17 +1249,35 @@ async function handleAuth() {
       setMessage("Passwords do not match.");
       return;
     }
+
+    if (!agreeTermsInput.checked) {
+      setMessage("You must agree to the Terms and Conditions to register.");
+      return;
+    }
   }
 
   try {
-    await api(`/api/auth/${authMode}`, {
+    const payload = { name, email, password };
+    if (authMode === "register") {
+      payload.termsAccepted = true;
+      payload.termsVersion = TERMS_VERSION;
+    }
+
+    const authResult = await api(`/api/auth/${authMode}`, {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify(payload),
     });
     setMessage("Signed in successfully.", false);
     passwordInput.value = "";
     confirmPasswordInput.value = "";
-    await loadAppData();
+    const appState = await loadAppData();
+
+    if (authResult.mustAcceptTerms || appState.requiresTermsAcceptance) {
+      acceptUpdatedTermsInput.checked = false;
+      showPage("termsAcceptance");
+      setMessage("Please accept the latest Terms and Conditions to continue.");
+      return;
+    }
 
     if (currentUser && currentUser.isAdmin) {
       showPage("admin");
@@ -1238,8 +1293,43 @@ async function handleAuth() {
   }
 }
 
+async function handleAcceptUpdatedTerms() {
+  if (!currentUser) {
+    setMessage("Please log in first.");
+    showPage("auth");
+    return;
+  }
+
+  if (!acceptUpdatedTermsInput.checked) {
+    setMessage("Please check the box to accept Terms and Conditions.");
+    return;
+  }
+
+  try {
+    await api("/api/auth/accept-terms", {
+      method: "POST",
+      body: JSON.stringify({ termsAccepted: true, termsVersion: TERMS_VERSION }),
+    });
+
+    const appState = await loadAppData();
+    if (appState.requiresTermsAcceptance) {
+      setMessage("Unable to verify terms acceptance. Please try again.");
+      return;
+    }
+
+    setMessage("Terms accepted. Welcome.", false);
+    showPage("stocks");
+  } catch (error) {
+    setMessage(error.message);
+  }
+}
+
 authSubmitBtn.addEventListener("click", () => {
   handleAuth();
+});
+
+acceptTermsBtn.addEventListener("click", () => {
+  handleAcceptUpdatedTerms();
 });
 
 switchAuthModeBtn.addEventListener("click", () => {
@@ -1249,6 +1339,9 @@ switchAuthModeBtn.addEventListener("click", () => {
 });
 
 homeNavBtn.addEventListener("click", () => {
+  if (guardTermsAcceptance()) {
+    return;
+  }
   showPage("home");
 });
 
@@ -1257,6 +1350,10 @@ footerPageLinks.forEach((link) => {
     event.preventDefault();
     const page = link.dataset.footerPage;
     if (!page) {
+      return;
+    }
+
+    if (guardTermsAcceptance()) {
       return;
     }
 
@@ -1275,14 +1372,23 @@ footerPageLinks.forEach((link) => {
 });
 
 whatIsInvestingNavBtn.addEventListener("click", () => {
+  if (guardTermsAcceptance()) {
+    return;
+  }
   showPage("whatIsInvesting");
 });
 
 investingInStocksNavBtn.addEventListener("click", () => {
+  if (guardTermsAcceptance()) {
+    return;
+  }
   showPage("investingInStocks");
 });
 
 howToStartInvestingNavBtn.addEventListener("click", () => {
+  if (guardTermsAcceptance()) {
+    return;
+  }
   showPage("howToStartInvesting");
 });
 
@@ -1299,6 +1405,9 @@ passwordVisibilityBtn.addEventListener("click", () => {
 });
 
 stocksNavBtn.addEventListener("click", async () => {
+  if (guardTermsAcceptance()) {
+    return;
+  }
   showPage("stocks");
   if (currentUser) {
     try {
@@ -1397,6 +1506,9 @@ window.addEventListener("resize", () => {
 });
 
 adminNavBtn.addEventListener("click", async () => {
+  if (guardTermsAcceptance()) {
+    return;
+  }
   if (!currentUser || !currentUser.isAdmin) {
     setMessage("Admin access required.");
     return;
@@ -1443,7 +1555,7 @@ adminSaveBtn.addEventListener("click", async () => {
   };
 
   if (!payload.ticker || !payload.company || !payload.sector || !payload.rationale) {
-    setMessage("Please complete all recommendation fields.");
+    setMessage("Please complete all Stock Insight fields.");
     return;
   }
 
@@ -1454,13 +1566,13 @@ adminSaveBtn.addEventListener("click", async () => {
         method: "PUT",
         body: JSON.stringify(payload),
       });
-      setMessage("Recommendation updated.", false);
+      setMessage("Stock Insight updated.", false);
     } else {
       await api("/api/admin/recommendations", {
         method: "POST",
         body: JSON.stringify(payload),
       });
-      setMessage("Recommendation added.", false);
+      setMessage("Stock Insight added.", false);
     }
 
     resetAdminForm();
@@ -1524,8 +1636,14 @@ pastRecsTabBtn.addEventListener("click", () => {
   setAdminTab("stocks");
   showPage(initialPage === "admin" ? "home" : initialPage);
   try {
-    await loadAppData();
+    const appState = await loadAppData();
     setMessage("", false);
+
+    if (appState.requiresTermsAcceptance) {
+      showPage("termsAcceptance");
+      setMessage("Please accept the latest Terms and Conditions to continue.");
+      return;
+    }
 
     if (initialPage === "admin") {
       if (currentUser && currentUser.isAdmin) {

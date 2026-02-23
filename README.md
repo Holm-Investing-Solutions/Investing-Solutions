@@ -1,11 +1,11 @@
 # Holm Investing Solutions
 
-A simple web app where users can create an account, log in, and view current stock recommendations (buy/sell).
+A simple web app where users can create an account, log in, and view current Stock Insights (buy/sell).
 
 ## Features
 
 - Header with Home and Stocks navigation
-- Admin page to add, edit, and delete stock recommendations
+- Admin page to add, edit, and delete Stock Insights
 - Home page with weekly recommendation update message
 - Stocks page with protected buy/sell recommendation list
 - Top-right Log In / Sign Out button
@@ -38,6 +38,12 @@ A simple web app where users can create an account, log in, and view current sto
 	```
 	http://localhost:3000
 	```
+
+## Deployment Workflow
+
+For a safe process to preview changes before they go live, see:
+
+- [DEPLOYMENT_WORKFLOW.md](DEPLOYMENT_WORKFLOW.md)
 
 ## Notes
 

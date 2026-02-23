@@ -15,7 +15,7 @@
           <button type="button" id="whatIsInvestingNavBtn" class="secondary pageNavBtn">What is Investing</button>
           <button type="button" id="investingInStocksNavBtn" class="secondary pageNavBtn">Investing in Stocks</button>
           <button type="button" id="howToStartInvestingNavBtn" class="secondary pageNavBtn">How to Start Investing</button>
-          <button type="button" id="stocksNavBtn" class="secondary pageNavBtn">Stock Picks</button>
+          <button type="button" id="stocksNavBtn" class="secondary pageNavBtn">Stock Insights</button>
           <button type="button" id="adminNavBtn" class="secondary hidden">Admin View</button>
         </nav>
         <button type="button" id="authActionBtn">Register/Log In</button>
@@ -34,7 +34,7 @@
       <section id="homePage" class="card">
         <h2>Weekly Stock Guidance</h2>
         <p>
-          We update our stock recommendations weekly based on market conditions,
+          We update our Stock Insights weekly based on market conditions,
           company performance, and risk trends.
         </p>
         <p>
@@ -82,14 +82,14 @@
       </section>
 
       <section id="stocksPage" class="card hidden">
-          <h2>Stock Recommendations</h2>
+          <h2>Stock Insights</h2>
         <p id="welcomeText" class="muted"></p>
           <p class="muted stocksPastInfo">
-            Stocks move to Past Recommendations after being marked SELL for 5 business days.
+            Stocks move to Past Stock Insights after being marked SELL for 5 business days.
           </p>
           <div class="buttonRow stocksTabs" role="tablist" aria-label="Stock recommendation views">
-            <button type="button" id="currentRecsTabBtn" class="secondary" role="tab" aria-selected="true">Current Recommendations</button>
-            <button type="button" id="pastRecsTabBtn" class="secondary" role="tab" aria-selected="false">Past Recommendations</button>
+            <button type="button" id="currentRecsTabBtn" class="secondary" role="tab" aria-selected="true">Current Stock Insights</button>
+            <button type="button" id="pastRecsTabBtn" class="secondary" role="tab" aria-selected="false">Past Stock Insights</button>
           </div>
         <div id="stockFilterBar" class="stockFilterBar hidden">
           <label class="inlineControl" for="stockFilterType">Filter by</label>
@@ -279,6 +279,19 @@
               />
             </div>
           </label>
+          <div id="registerTermsSection" class="registerTerms hidden">
+            <p class="registerTermsVersion">Terms and Conditions Version 1.1</p>
+            <iframe
+              class="registerTermsFrame"
+              src="terms-content.html"
+              title="Terms and Conditions Version 1.1"
+              loading="lazy"
+            ></iframe>
+            <label class="termsAgreeRow" for="agreeTerms">
+              <input id="agreeTerms" name="agreeTerms" type="checkbox" />
+              <span>I agree to the Terms and Conditions (Version 1.1).</span>
+            </label>
+          </div>
           <div class="buttonRow">
             <button type="button" id="authSubmitBtn">Log In</button>
           </div>
@@ -287,9 +300,30 @@
         </form>
       </section>
 
+      <section id="termsAcceptancePage" class="card hidden">
+        <h2>Terms and Conditions Update Required</h2>
+        <p class="muted">To continue, please review and accept Terms and Conditions Version 1.1.</p>
+        <div class="registerTerms">
+          <p class="registerTermsVersion">Terms and Conditions Version 1.1</p>
+          <iframe
+            class="registerTermsFrame"
+            src="terms-content.html"
+            title="Terms and Conditions Version 1.1"
+            loading="lazy"
+          ></iframe>
+          <label class="termsAgreeRow" for="acceptUpdatedTerms">
+            <input id="acceptUpdatedTerms" name="acceptUpdatedTerms" type="checkbox" />
+            <span>I agree to the Terms and Conditions (Version 1.1).</span>
+          </label>
+          <div class="buttonRow termsAcceptanceActions">
+            <button type="button" id="acceptTermsBtn">Accept Terms and Continue</button>
+          </div>
+        </div>
+      </section>
+
       <section id="adminPage" class="card hidden">
         <h2>Admin View</h2>
-        <p class="muted">Edit stock recommendations and review registered users.</p>
+        <p class="muted">Edit Stock Insights and review registered users.</p>
         <div class="buttonRow adminTabs" role="tablist" aria-label="Admin sections">
           <button type="button" id="adminStocksTabBtn" class="secondary" role="tab" aria-selected="true">Manage Stocks</button>
           <button type="button" id="adminUsersTabBtn" class="secondary" role="tab" aria-selected="false">Registered Users</button>
@@ -340,11 +374,11 @@
             </div>
           </form>
 
-          <h3>Manage Recommendations</h3>
+          <h3>Manage Stock Insights</h3>
           <div id="adminList" class="stack"></div>
 
-          <h3>Past Recommendations</h3>
-          <p class="muted">Delete recommendations that have been in SELL status for 5+ business days.</p>
+          <h3>Past Stock Insights</h3>
+          <p class="muted">Delete Stock Insights that have been in SELL status for 5+ business days.</p>
           <div id="adminPastList" class="stack"></div>
         </section>
 
@@ -361,7 +395,7 @@
       <div class="container footerPanel">
         <section class="footerColumn footerBrand">
           <h3>Holm Investing Solutions</h3>
-          <p>We evaluate market trends, company performance, and risk signals to guide what stocks to buy or sell.</p>
+          <p>We evaluate market trends, company performance, and risk signals show users our market insights.</p>
           <p class="footerMetaLine">
             <span class="footerIcon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -388,7 +422,7 @@
           <a href="#" data-footer-page="whatIsInvesting">What is Investing</a>
           <a href="#" data-footer-page="investingInStocks">Investing in Stocks</a>
           <a href="#" data-footer-page="howToStartInvesting">How to Start Investing</a>
-          <a href="#" data-footer-page="stocks">Stock Picks</a>
+          <a href="#" data-footer-page="stocks">Stock Insights</a>
         </nav>
 
         <nav class="footerColumn" aria-label="Legal">
