@@ -1,12 +1,25 @@
 const path = require("path");
-const fs = require("fs");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
-const Database = require("better-sqlite3");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+const SUPABASE_URL =
+  process.env.SUPABASE_URL || "https://kmcdwnfzenrgbhrqtnaj.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY =
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  "sb_publishable_1dAPRqeGHhaD2Vz9qU1_9w_BBKBB8Rn";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_PUBLISHABLE_KEY;
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+});
 
 const DEFAULT_ADMIN = {
   name: "ADMIN2073",
@@ -17,111 +30,186 @@ const DEFAULT_ADMIN = {
 const LEGACY_DEFAULT_ADMIN_EMAILS = ["brodyholm73@gmail.com"];
 const TERMS_VERSION = "1.1";
 
-const dataDir = path.join(__dirname, "data");
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+const DEFAULT_RECOMMENDATIONS = [
+  {
+    ticker: "MSFT",
+    company: "Microsoft",
+    action: "BUY",
+    rationale: "Cloud growth and strong enterprise demand.",
+    sector: "Technology",
+  },
+  {
+    ticker: "NVDA",
+    company: "NVIDIA",
+    action: "BUY",
+    rationale: "AI infrastructure demand remains strong.",
+    sector: "Technology",
+  },
+  {
+    ticker: "AAPL",
+    company: "Apple",
+    action: "SELL",
+    rationale: "Valuation appears stretched against growth outlook.",
+    sector: "Technology",
+  },
+  {
+    ticker: "XOM",
+    company: "Exxon Mobil",
+    action: "SELL",
+    rationale: "Earnings sensitivity to commodity volatility is high.",
+    sector: "Energy",
+  },
+  {
+    ticker: "AMZN",
+    company: "Amazon",
+    action: "BUY",
+    rationale: "Margin expansion and resilient retail + AWS momentum.",
+    sector: "Consumer Discretionary",
+  },
+];
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
 }
 
-const db = new Database(path.join(dataDir, "app.db"));
+function formatSupabaseError(error, fallbackMessage) {
+  const errorMessage = String(error?.message || "").trim();
+  return errorMessage || fallbackMessage;
+}
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    email TEXT,
-    password_hash TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
+function getSessionExpirationDate(sessionData) {
+  const rawExpiration = sessionData?.cookie?.expires;
+  const expiration = rawExpiration ? new Date(rawExpiration) : new Date(Date.now() + 1000 * 60 * 60 * 24);
 
-  CREATE TABLE IF NOT EXISTS recommendations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ticker TEXT NOT NULL,
-    company TEXT NOT NULL,
-    action TEXT NOT NULL CHECK(action IN ('BUY', 'SELL', 'HOLD')),
-    rationale TEXT NOT NULL,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-`);
+  if (!Number.isFinite(expiration.getTime())) {
+    return new Date(Date.now() + 1000 * 60 * 60 * 24);
+  }
 
-function ensureHoldActionSupport() {
-  const recommendationsTable = db
-    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'recommendations'")
-    .get();
+  return expiration;
+}
 
-  const createSql = String(recommendationsTable?.sql || "");
-  const hasBuySellOnlyConstraint = createSql.includes("CHECK(action IN ('BUY', 'SELL'))");
-  if (!hasBuySellOnlyConstraint) {
+class SupabaseSessionStore extends session.Store {
+  async get(sid, callback) {
+    try {
+      const { data, error } = await supabase
+        .from("sessions")
+        .select("sess, expire")
+        .eq("sid", sid)
+        .maybeSingle();
+
+      if (error) {
+        callback(new Error(formatSupabaseError(error, "Failed to load session.")));
+        return;
+      }
+
+      if (!data) {
+        callback(null, null);
+        return;
+      }
+
+      const expiration = new Date(data.expire);
+      if (!Number.isFinite(expiration.getTime()) || expiration.getTime() <= Date.now()) {
+        await supabase.from("sessions").delete().eq("sid", sid);
+        callback(null, null);
+        return;
+      }
+
+      callback(null, data.sess);
+    } catch (error) {
+      callback(new Error(formatSupabaseError(error, "Failed to load session.")));
+    }
+  }
+
+  async set(sid, sessionData, callback) {
+    try {
+      const expiration = getSessionExpirationDate(sessionData);
+      const { error } = await supabase
+        .from("sessions")
+        .upsert(
+          {
+            sid,
+            sess: sessionData,
+            expire: expiration.toISOString(),
+          },
+          { onConflict: "sid" }
+        );
+
+      callback(error ? new Error(formatSupabaseError(error, "Failed to save session.")) : null);
+    } catch (error) {
+      callback(new Error(formatSupabaseError(error, "Failed to save session.")));
+    }
+  }
+
+  async destroy(sid, callback) {
+    try {
+      const { error } = await supabase.from("sessions").delete().eq("sid", sid);
+      callback(error ? new Error(formatSupabaseError(error, "Failed to delete session.")) : null);
+    } catch (error) {
+      callback(new Error(formatSupabaseError(error, "Failed to delete session.")));
+    }
+  }
+
+  async touch(sid, sessionData, callback) {
+    try {
+      const expiration = getSessionExpirationDate(sessionData);
+      const { error } = await supabase
+        .from("sessions")
+        .update({ expire: expiration.toISOString() })
+        .eq("sid", sid);
+
+      callback(error ? new Error(formatSupabaseError(error, "Failed to refresh session.")) : null);
+    } catch (error) {
+      callback(new Error(formatSupabaseError(error, "Failed to refresh session.")));
+    }
+  }
+}
+
+function mapRecommendationForClient(row) {
+  return {
+    id: row.id,
+    ticker: row.ticker,
+    company: row.company,
+    action: row.action,
+    rationale: row.rationale,
+    sector: row.sector,
+    lockedChangePercent:
+      typeof row.locked_change_percent === "number" ? row.locked_change_percent : null,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function getAllRecommendations() {
+  const { data, error } = await supabase
+    .from("recommendations")
+    .select("id, ticker, company, action, rationale, sector, locked_change_percent, updated_at")
+    .order("id", { ascending: false });
+
+  if (error) {
+    throw new Error(formatSupabaseError(error, "Failed to load recommendations."));
+  }
+
+  return (data || []).map(mapRecommendationForClient);
+}
+
+async function ensureDefaultRecommendations() {
+  const { count, error: countError } = await supabase
+    .from("recommendations")
+    .select("id", { count: "exact", head: true });
+
+  if (countError) {
+    throw new Error(formatSupabaseError(countError, "Failed to check recommendations."));
+  }
+
+  if ((count || 0) > 0) {
     return;
   }
 
-  const migrate = db.transaction(() => {
-    db.exec(`
-      CREATE TABLE recommendations_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ticker TEXT NOT NULL,
-        company TEXT NOT NULL,
-        action TEXT NOT NULL CHECK(action IN ('BUY', 'SELL', 'HOLD')),
-        rationale TEXT NOT NULL,
-        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
+  const { error: insertError } = await supabase.from("recommendations").insert(DEFAULT_RECOMMENDATIONS);
 
-      INSERT INTO recommendations_new (id, ticker, company, action, rationale, updated_at)
-      SELECT id, ticker, company, action, rationale, updated_at
-      FROM recommendations;
-
-      DROP TABLE recommendations;
-      ALTER TABLE recommendations_new RENAME TO recommendations;
-    `);
-  });
-
-  migrate();
-}
-
-ensureHoldActionSupport();
-
-function ensureRecommendationSectorSupport() {
-  const recommendationColumns = db.prepare("PRAGMA table_info(recommendations)").all();
-  const hasSectorColumn = recommendationColumns.some((column) => column.name === "sector");
-
-  if (!hasSectorColumn) {
-    db.exec("ALTER TABLE recommendations ADD COLUMN sector TEXT NOT NULL DEFAULT 'General'");
-  }
-
-  db.exec(
-    "UPDATE recommendations SET sector = 'Unspecified' WHERE sector IS NULL OR trim(sector) = '' OR lower(sector) = 'general'"
-  );
-
-  const defaultSectorByTicker = {
-    MSFT: "Technology",
-    NVDA: "Technology",
-    AAPL: "Technology",
-    XOM: "Energy",
-    AMZN: "Consumer Discretionary",
-  };
-
-  const updateSector = db.prepare(
-    "UPDATE recommendations SET sector = ? WHERE ticker = ? AND (sector IS NULL OR trim(sector) = '' OR lower(sector) = 'general' OR sector = 'Unspecified')"
-  );
-
-  for (const [ticker, sector] of Object.entries(defaultSectorByTicker)) {
-    updateSector.run(sector, ticker);
+  if (insertError) {
+    throw new Error(formatSupabaseError(insertError, "Failed to seed recommendations."));
   }
 }
-
-ensureRecommendationSectorSupport();
-
-function ensureRecommendationLockedChangeSupport() {
-  const recommendationColumns = db.prepare("PRAGMA table_info(recommendations)").all();
-  const hasLockedChangeColumn = recommendationColumns.some(
-    (column) => column.name === "locked_change_percent"
-  );
-
-  if (!hasLockedChangeColumn) {
-    db.exec("ALTER TABLE recommendations ADD COLUMN locked_change_percent REAL");
-  }
-}
-
-ensureRecommendationLockedChangeSupport();
 
 async function fetchSectorForTicker(ticker) {
   try {
@@ -197,10 +285,6 @@ async function fetchChangePercentSinceDate(ticker, sinceDateText) {
 }
 
 async function enrichRecommendationSectors(stocks) {
-  const updateSectorStatement = db.prepare(
-    "UPDATE recommendations SET sector = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-  );
-
   const result = await Promise.all(
     stocks.map(async (stock) => {
       const currentSector = String(stock.sector || "").trim();
@@ -221,7 +305,21 @@ async function enrichRecommendationSectors(stocks) {
         };
       }
 
-      updateSectorStatement.run(resolvedSector, stock.id);
+      const { error } = await supabase
+        .from("recommendations")
+        .update({
+          sector: resolvedSector,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", stock.id);
+
+      if (error) {
+        return {
+          ...stock,
+          sector: "Unspecified",
+        };
+      }
+
       return {
         ...stock,
         sector: resolvedSector,
@@ -232,72 +330,13 @@ async function enrichRecommendationSectors(stocks) {
   return result;
 }
 
-const userColumns = db.prepare("PRAGMA table_info(users)").all();
-const hasNameColumn = userColumns.some((column) => column.name === "name");
-const hasEmailColumn = userColumns.some((column) => column.name === "email");
-const hasLegacyUsernameColumn = userColumns.some((column) => column.name === "username");
-
-if (!hasNameColumn) {
-  db.exec("ALTER TABLE users ADD COLUMN name TEXT");
-}
-
-if (!hasEmailColumn) {
-  db.exec("ALTER TABLE users ADD COLUMN email TEXT");
-  db.exec("UPDATE users SET email = username WHERE email IS NULL AND username IS NOT NULL");
-}
-
-function ensureUserTermsAcceptanceSupport() {
-  const columns = db.prepare("PRAGMA table_info(users)").all();
-  const hasTermsAcceptedAtColumn = columns.some((column) => column.name === "terms_accepted_at");
-  const hasTermsVersionColumn = columns.some((column) => column.name === "terms_version_accepted");
-
-  if (!hasTermsAcceptedAtColumn) {
-    db.exec("ALTER TABLE users ADD COLUMN terms_accepted_at TEXT");
-  }
-
-  if (!hasTermsVersionColumn) {
-    db.exec("ALTER TABLE users ADD COLUMN terms_version_accepted TEXT");
-  }
-}
-
-ensureUserTermsAcceptanceSupport();
-
-db.exec(
-  "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL"
-);
-
-const recommendationCount = db
-  .prepare("SELECT COUNT(*) as count FROM recommendations")
-  .get().count;
-
-if (recommendationCount === 0) {
-  const insertRecommendation = db.prepare(
-    "INSERT INTO recommendations (ticker, company, action, rationale, sector) VALUES (?, ?, ?, ?, ?)"
-  );
-
-  // This is where you edit the stock picks
-  const seedRecommendations = [
-    ["MSFT", "Microsoft", "BUY", "Cloud growth and strong enterprise demand.", "Technology"],
-    ["NVDA", "NVIDIA", "BUY", "AI infrastructure demand remains strong.", "Technology"],
-    ["AAPL", "Apple", "SELL", "Valuation appears stretched against growth outlook.", "Technology"],
-    ["XOM", "Exxon Mobil", "SELL", "Earnings sensitivity to commodity volatility is high.", "Energy"],
-    ["AMZN", "Amazon", "BUY", "Margin expansion and resilient retail + AWS momentum.", "Consumer Discretionary"],
-  ];
-
-  const transaction = db.transaction(() => {
-    for (const stock of seedRecommendations) {
-      insertRecommendation.run(...stock);
-    }
-  });
-  transaction();
-}
-
 app.use(express.json());
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "change-this-session-secret",
     resave: false,
     saveUninitialized: false,
+    store: new SupabaseSessionStore(),
     cookie: {
       httpOnly: true,
       sameSite: "lax",
@@ -320,16 +359,62 @@ function hasAcceptedCurrentTerms(user) {
   return Boolean(acceptedAt) && acceptedVersion === TERMS_VERSION;
 }
 
-function getSessionUserWithTerms(userId) {
-  return db
-    .prepare(
-      "SELECT id, name, email, terms_accepted_at, terms_version_accepted FROM users WHERE id = ?"
-    )
-    .get(userId);
+async function getUserById(userId) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, name, email, password_hash, created_at, terms_accepted_at, terms_version_accepted")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(formatSupabaseError(error, "Failed to load user."));
+  }
+
+  return data;
 }
 
-function requireAcceptedTerms(req, res, next) {
-  const user = getSessionUserWithTerms(req.session.userId);
+async function getUserByEmail(email) {
+  const normalizedEmail = normalizeEmail(email);
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, name, email, password_hash, created_at, terms_accepted_at, terms_version_accepted")
+    .eq("email", normalizedEmail)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(formatSupabaseError(error, "Failed to load user."));
+  }
+
+  return data;
+}
+
+function mapUserForClient(user) {
+  if (!user) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.created_at,
+    termsAcceptedAt: user.terms_accepted_at,
+    termsVersionAccepted: user.terms_version_accepted,
+  };
+}
+
+async function getSessionUserWithTerms(userId) {
+  return getUserById(userId);
+}
+
+async function requireAcceptedTerms(req, res, next) {
+  let user;
+  try {
+    user = await getSessionUserWithTerms(req.session.userId);
+  } catch {
+    return res.status(500).json({ error: "Failed to verify user account." });
+  }
+
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -359,12 +444,18 @@ function isAdminEmail(email) {
   return getAdminEmails().includes(normalizedEmail);
 }
 
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const user = getSessionUserWithTerms(req.session.userId);
+  let user;
+  try {
+    user = await getSessionUserWithTerms(req.session.userId);
+  } catch {
+    return res.status(500).json({ error: "Failed to verify user account." });
+  }
+
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -384,60 +475,74 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-function ensureDefaultAdminUser() {
+async function ensureDefaultAdminUser() {
   const adminEmail = DEFAULT_ADMIN.email.toLowerCase();
-  const existingAdmin = db
-    .prepare("SELECT id FROM users WHERE email = ?")
-    .get(adminEmail);
-
-  const legacyAdmin = db
-    .prepare(
-      `SELECT id FROM users WHERE lower(email) IN (${LEGACY_DEFAULT_ADMIN_EMAILS
-        .map(() => "?")
-        .join(",")}) LIMIT 1`
-    )
-    .get(...LEGACY_DEFAULT_ADMIN_EMAILS);
-
   const passwordHash = bcrypt.hashSync(DEFAULT_ADMIN.password, 10);
 
+  const existingAdmin = await getUserByEmail(adminEmail);
   if (existingAdmin) {
-    db.prepare("UPDATE users SET name = ?, password_hash = ? WHERE id = ?").run(
-      DEFAULT_ADMIN.name,
-      passwordHash,
-      existingAdmin.id
-    );
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        name: DEFAULT_ADMIN.name,
+        password_hash: passwordHash,
+      })
+      .eq("id", existingAdmin.id);
+
+    if (updateError) {
+      throw new Error(formatSupabaseError(updateError, "Failed to update default admin user."));
+    }
+
     return;
   }
 
+  const legacyEmails = LEGACY_DEFAULT_ADMIN_EMAILS.map((email) => normalizeEmail(email));
+  const { data: legacyUsers, error: legacyLookupError } = await supabase
+    .from("users")
+    .select("id, email")
+    .in("email", legacyEmails)
+    .limit(1);
+
+  if (legacyLookupError) {
+    throw new Error(formatSupabaseError(legacyLookupError, "Failed to check legacy admin users."));
+  }
+
+  const legacyAdmin = legacyUsers?.[0];
   if (legacyAdmin) {
-    db.prepare("UPDATE users SET name = ?, email = ?, password_hash = ? WHERE id = ?").run(
-      DEFAULT_ADMIN.name,
-      adminEmail,
-      passwordHash,
-      legacyAdmin.id
-    );
+    const { error: legacyUpdateError } = await supabase
+      .from("users")
+      .update({
+        name: DEFAULT_ADMIN.name,
+        email: adminEmail,
+        password_hash: passwordHash,
+      })
+      .eq("id", legacyAdmin.id);
+
+    if (legacyUpdateError) {
+      throw new Error(formatSupabaseError(legacyUpdateError, "Failed to migrate legacy admin user."));
+    }
+
     return;
   }
 
-  if (hasLegacyUsernameColumn) {
-    db
-      .prepare("INSERT INTO users (name, email, username, password_hash) VALUES (?, ?, ?, ?)")
-      .run(DEFAULT_ADMIN.name, adminEmail, adminEmail, passwordHash);
-    return;
-  }
+  const { error: insertError } = await supabase.from("users").insert({
+    name: DEFAULT_ADMIN.name,
+    email: adminEmail,
+    password_hash: passwordHash,
+  });
 
-  db.prepare("INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)").run(
-    DEFAULT_ADMIN.name,
-    adminEmail,
-    passwordHash
-  );
+  if (insertError) {
+    throw new Error(formatSupabaseError(insertError, "Failed to create default admin user."));
+  }
 }
 
-ensureDefaultAdminUser();
+Promise.all([ensureDefaultAdminUser(), ensureDefaultRecommendations()]).catch((error) => {
+  console.error(error.message);
+});
 
 app.post("/api/auth/register", async (req, res) => {
   const name = String(req.body.name || "").trim();
-  const email = String(req.body.email || "").trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || "");
   const termsAccepted = Boolean(req.body.termsAccepted);
   const termsVersion = String(req.body.termsVersion || "").trim();
@@ -457,26 +562,31 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     const termsAcceptedAt = new Date().toISOString();
-    const result = hasLegacyUsernameColumn
-      ? db
-          .prepare(
-            "INSERT INTO users (name, email, username, password_hash, terms_accepted_at, terms_version_accepted) VALUES (?, ?, ?, ?, ?, ?)"
-          )
-          .run(name, email, email, passwordHash, termsAcceptedAt, TERMS_VERSION)
-      : db
-          .prepare("INSERT INTO users (name, email, password_hash, terms_accepted_at, terms_version_accepted) VALUES (?, ?, ?, ?, ?)")
-          .run(name, email, passwordHash, termsAcceptedAt, TERMS_VERSION);
+    const { data: newUser, error: insertError } = await supabase
+      .from("users")
+      .insert({
+        name,
+        email,
+        password_hash: passwordHash,
+        terms_accepted_at: termsAcceptedAt,
+        terms_version_accepted: TERMS_VERSION,
+      })
+      .select("id, name, email")
+      .single();
 
-    req.session.userId = result.lastInsertRowid;
+    if (insertError) {
+      throw insertError;
+    }
+
+    req.session.userId = newUser.id;
     req.session.name = name;
     req.session.email = email;
 
     return res.status(201).json({ name, email });
   } catch (error) {
-    if (String(error.message).includes("UNIQUE")) {
-      const existingUser = db
-        .prepare("SELECT id, name, email, password_hash FROM users WHERE email = ?")
-        .get(email);
+    const duplicateEmailCodes = new Set(["23505", "409"]);
+    if (duplicateEmailCodes.has(String(error.code || "")) || String(error.message).toLowerCase().includes("duplicate")) {
+      const existingUser = await getUserByEmail(email);
 
       if (existingUser) {
         const valid = await bcrypt.compare(password, existingUser.password_hash);
@@ -484,7 +594,7 @@ app.post("/api/auth/register", async (req, res) => {
           req.session.userId = existingUser.id;
           req.session.name = existingUser.name || "Member";
           req.session.email = existingUser.email;
-          const existingUserWithTerms = getSessionUserWithTerms(existingUser.id);
+          const existingUserWithTerms = await getSessionUserWithTerms(existingUser.id);
           return res.status(200).json({
             name: req.session.name,
             email: req.session.email,
@@ -497,23 +607,23 @@ app.post("/api/auth/register", async (req, res) => {
 
       return res.status(409).json({ error: "Email already exists. Use Log In or enter the correct password." });
     }
+
+    console.error(formatSupabaseError(error, "Failed to register."));
     return res.status(500).json({ error: "Failed to register." });
   }
 });
 
 app.post("/api/auth/login", async (req, res) => {
   const name = String(req.body.name || "").trim();
-  const email = String(req.body.email || "").trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || "");
 
   if (
     email === DEFAULT_ADMIN.email.toLowerCase() &&
     password === DEFAULT_ADMIN.password
   ) {
-    ensureDefaultAdminUser();
-    const adminUser = db
-      .prepare("SELECT id, name, email, terms_accepted_at, terms_version_accepted FROM users WHERE email = ?")
-      .get(email);
+    await ensureDefaultAdminUser();
+    const adminUser = await getUserByEmail(email);
 
     if (adminUser) {
       req.session.userId = adminUser.id;
@@ -528,9 +638,7 @@ app.post("/api/auth/login", async (req, res) => {
     }
   }
 
-  const user = db
-    .prepare("SELECT id, name, email, password_hash, terms_accepted_at, terms_version_accepted FROM users WHERE email = ?")
-    .get(email);
+  const user = await getUserByEmail(email);
 
   if (!user) {
     return res.status(401).json({ error: "Invalid email or password." });
@@ -563,12 +671,18 @@ app.post("/api/auth/logout", (req, res) => {
   });
 });
 
-app.get("/api/auth/me", (req, res) => {
+app.get("/api/auth/me", async (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const user = getSessionUserWithTerms(req.session.userId);
+  let user;
+  try {
+    user = await getSessionUserWithTerms(req.session.userId);
+  } catch {
+    return res.status(500).json({ error: "Failed to load user account." });
+  }
+
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -582,7 +696,7 @@ app.get("/api/auth/me", (req, res) => {
   });
 });
 
-app.post("/api/auth/accept-terms", requireAuth, (req, res) => {
+app.post("/api/auth/accept-terms", requireAuth, async (req, res) => {
   const termsAccepted = Boolean(req.body.termsAccepted);
   const termsVersion = String(req.body.termsVersion || "").trim();
 
@@ -593,13 +707,22 @@ app.post("/api/auth/accept-terms", requireAuth, (req, res) => {
   }
 
   const termsAcceptedAt = new Date().toISOString();
-  const result = db
-    .prepare(
-      "UPDATE users SET terms_accepted_at = ?, terms_version_accepted = ? WHERE id = ?"
-    )
-    .run(termsAcceptedAt, TERMS_VERSION, req.session.userId);
+  const { data: updatedUser, error: updateError } = await supabase
+    .from("users")
+    .update({
+      terms_accepted_at: termsAcceptedAt,
+      terms_version_accepted: TERMS_VERSION,
+    })
+    .eq("id", req.session.userId)
+    .select("id")
+    .maybeSingle();
 
-  if (result.changes === 0) {
+  if (updateError) {
+    console.error(formatSupabaseError(updateError, "Failed to save terms acceptance."));
+    return res.status(500).json({ error: "Failed to save terms acceptance." });
+  }
+
+  if (!updatedUser) {
     return res.status(404).json({ error: "User not found." });
   }
 
@@ -607,11 +730,12 @@ app.post("/api/auth/accept-terms", requireAuth, (req, res) => {
 });
 
 app.get("/api/recommendations", requireAuth, requireAcceptedTerms, async (req, res) => {
-  const stocks = db
-    .prepare(
-      "SELECT id, ticker, company, action, rationale, sector, locked_change_percent as lockedChangePercent, updated_at as updatedAt FROM recommendations ORDER BY id DESC"
-    )
-    .all();
+  let stocks;
+  try {
+    stocks = await getAllRecommendations();
+  } catch {
+    return res.status(500).json({ error: "Failed to load recommendations." });
+  }
 
   const enrichedStocks = await enrichRecommendationSectors(stocks);
 
@@ -619,47 +743,63 @@ app.get("/api/recommendations", requireAuth, requireAcceptedTerms, async (req, r
 });
 
 app.get("/api/admin/recommendations", requireAdmin, async (req, res) => {
-  const stocks = db
-    .prepare(
-      "SELECT id, ticker, company, action, rationale, sector, locked_change_percent as lockedChangePercent, updated_at as updatedAt FROM recommendations ORDER BY id DESC"
-    )
-    .all();
+  let stocks;
+  try {
+    stocks = await getAllRecommendations();
+  } catch {
+    return res.status(500).json({ error: "Failed to load recommendations." });
+  }
 
   const enrichedStocks = await enrichRecommendationSectors(stocks);
 
   return res.json({ stocks: enrichedStocks });
 });
 
-app.get("/api/admin/users", requireAdmin, (req, res) => {
-  const users = db
-    .prepare(
-      "SELECT id, name, email, created_at as createdAt, terms_accepted_at as termsAcceptedAt, terms_version_accepted as termsVersionAccepted FROM users ORDER BY id DESC"
-    )
-    .all();
+app.get("/api/admin/users", requireAdmin, async (req, res) => {
+  const { data: users, error } = await supabase
+    .from("users")
+    .select("id, name, email, created_at, terms_accepted_at, terms_version_accepted")
+    .order("created_at", { ascending: false });
 
-  return res.json({ users });
+  if (error) {
+    console.error(formatSupabaseError(error, "Failed to load users."));
+    return res.status(500).json({ error: "Failed to load users." });
+  }
+
+  return res.json({ users: (users || []).map(mapUserForClient) });
 });
 
-app.delete("/api/admin/users/:id", requireAdmin, (req, res) => {
-  const id = Number(req.params.id);
+app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+  const id = String(req.params.id || "").trim();
 
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!id) {
     return res.status(400).json({ error: "Invalid user id." });
   }
 
-  if (Number(req.session.userId) === id) {
+  if (String(req.session.userId) === id) {
     return res.status(400).json({ error: "You cannot delete the currently logged-in user." });
   }
 
-  const result = db.prepare("DELETE FROM users WHERE id = ?").run(id);
-  if (result.changes === 0) {
+  const { data: deletedUser, error } = await supabase
+    .from("users")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error(formatSupabaseError(error, "Failed to delete user."));
+    return res.status(500).json({ error: "Failed to delete user." });
+  }
+
+  if (!deletedUser) {
     return res.status(404).json({ error: "User not found." });
   }
 
   return res.json({ ok: true });
 });
 
-app.post("/api/admin/recommendations", requireAdmin, (req, res) => {
+app.post("/api/admin/recommendations", requireAdmin, async (req, res) => {
   const ticker = String(req.body.ticker || "").trim().toUpperCase();
   const company = String(req.body.company || "").trim();
   const action = String(req.body.action || "").trim().toUpperCase();
@@ -670,16 +810,27 @@ app.post("/api/admin/recommendations", requireAdmin, (req, res) => {
     return res.status(400).json({ error: "Ticker, company, sector, rationale, and BUY/SELL/HOLD action are required." });
   }
 
-  const result = db
-    .prepare(
-      "INSERT INTO recommendations (ticker, company, action, rationale, sector, locked_change_percent, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
-    )
-    .run(ticker, company, action, rationale, sector, action === "SELL" ? 0 : null);
+  const { data, error } = await supabase
+    .from("recommendations")
+    .insert({
+      ticker,
+      company,
+      action,
+      rationale,
+      sector,
+      locked_change_percent: action === "SELL" ? 0 : null,
+    })
+    .select("id")
+    .single();
 
-  return res.status(201).json({ id: result.lastInsertRowid });
+  if (error) {
+    return res.status(500).json({ error: "Failed to create recommendation." });
+  }
+
+  return res.status(201).json({ id: data.id });
 });
 
-app.put("/api/admin/recommendations/:id", requireAdmin, (req, res) => {
+app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const ticker = String(req.body.ticker || "").trim().toUpperCase();
   const company = String(req.body.company || "").trim();
@@ -695,50 +846,72 @@ app.put("/api/admin/recommendations/:id", requireAdmin, (req, res) => {
     return res.status(400).json({ error: "Ticker, company, sector, rationale, and BUY/SELL/HOLD action are required." });
   }
 
-  const existing = db
-    .prepare("SELECT id, ticker, action, updated_at as updatedAt, locked_change_percent as lockedChangePercent FROM recommendations WHERE id = ?")
-    .get(id);
+  const { data: existing, error: existingError } = await supabase
+    .from("recommendations")
+    .select("id, ticker, action, updated_at, locked_change_percent")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (existingError) {
+    return res.status(500).json({ error: "Failed to load recommendation." });
+  }
 
   if (!existing) {
     return res.status(404).json({ error: "Recommendation not found." });
   }
 
-  const updateRecommendation = async () => {
-    let lockedChangePercent = null;
-    const wasSell = String(existing.action || "") === "SELL";
-    const isSell = action === "SELL";
+  let lockedChangePercent = null;
+  const wasSell = String(existing.action || "") === "SELL";
+  const isSell = action === "SELL";
 
-    if (isSell) {
-      if (wasSell && typeof existing.lockedChangePercent === "number") {
-        lockedChangePercent = existing.lockedChangePercent;
-      } else {
-        const computedPercent = await fetchChangePercentSinceDate(existing.ticker, existing.updatedAt);
-        lockedChangePercent = typeof computedPercent === "number" ? computedPercent : 0;
-      }
+  if (isSell) {
+    if (wasSell && typeof existing.locked_change_percent === "number") {
+      lockedChangePercent = existing.locked_change_percent;
+    } else {
+      const computedPercent = await fetchChangePercentSinceDate(existing.ticker, existing.updated_at);
+      lockedChangePercent = typeof computedPercent === "number" ? computedPercent : 0;
     }
+  }
 
-    db.prepare(
-      "UPDATE recommendations SET ticker = ?, company = ?, action = ?, rationale = ?, sector = ?, locked_change_percent = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
-    ).run(ticker, company, action, rationale, sector, lockedChangePercent, id);
+  const { error: updateError } = await supabase
+    .from("recommendations")
+    .update({
+      ticker,
+      company,
+      action,
+      rationale,
+      sector,
+      locked_change_percent: lockedChangePercent,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
 
-    return res.json({ ok: true });
-  };
-
-  updateRecommendation().catch(() => {
+  if (updateError) {
     return res.status(500).json({ error: "Failed to update recommendation." });
-  });
+  }
+
+  return res.json({ ok: true });
 });
 
-app.delete("/api/admin/recommendations/:id", requireAdmin, (req, res) => {
+app.delete("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
 
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid recommendation id." });
   }
 
-  const result = db.prepare("DELETE FROM recommendations WHERE id = ?").run(id);
+  const { data: deletedRow, error } = await supabase
+    .from("recommendations")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
 
-  if (result.changes === 0) {
+  if (error) {
+    return res.status(500).json({ error: "Failed to delete recommendation." });
+  }
+
+  if (!deletedRow) {
     return res.status(404).json({ error: "Recommendation not found." });
   }
 

@@ -16,7 +16,7 @@ A simple web app where users can create an account, log in, and view current Sto
 ## Tech Stack
 
 - Node.js + Express
-- SQLite (`better-sqlite3`)
+- Supabase (Postgres)
 - Plain HTML/CSS/JavaScript frontend
 
 ## Run Locally
@@ -48,10 +48,13 @@ For a safe process to preview changes before they go live, see:
 ## Notes
 
 - Default session secret is development-only. For production, set `SESSION_SECRET`.
+- Supabase config can be set with `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`.
+- For server-side writes (users, recommendations, sessions), prefer `SUPABASE_SERVICE_ROLE_KEY` so backend operations are authorized.
+- Run [SUPABASE_SCHEMA.sql](SUPABASE_SCHEMA.sql) in the Supabase SQL editor to create required tables (`public.users`, `public.recommendations`, `public.sessions`).
+- Passwords are stored as bcrypt hashes (`password_hash`), never plaintext.
 - To control admin access, set `ADMIN_EMAIL` (single) or `ADMIN_EMAILS` (comma-separated).
 - If no admin env var is set, default admin email is `austinrayholm@yahoo.com`.
 - The app seeds/updates a default admin user on startup:
 	- Name: `ADMIN2073`
 	- Email: `austinrayholm@yahoo.com`
 	- Password: `Atlantic73!`
-- Local database is stored at `data/app.db` and is ignored by git.

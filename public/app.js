@@ -1193,8 +1193,8 @@ function renderAdminUsers(users) {
 
   for (const deleteUserButton of adminUsersList.querySelectorAll("[data-delete-user-id]")) {
     deleteUserButton.addEventListener("click", async () => {
-      const userId = Number(deleteUserButton.getAttribute("data-delete-user-id"));
-      if (!Number.isInteger(userId) || userId <= 0) {
+      const userId = String(deleteUserButton.getAttribute("data-delete-user-id") || "").trim();
+      if (!userId) {
         return;
       }
 
