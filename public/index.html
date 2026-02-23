@@ -1,0 +1,526 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Holm Investing Solutions</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="siteHeader">
+      <div class="container headerInner">
+        <h1>Holm Investing Solutions</h1>
+        <nav class="buttonRow pageNav">
+          <button type="button" id="homeNavBtn" class="secondary pageNavBtn">Home</button>
+          <button type="button" id="whatIsInvestingNavBtn" class="secondary pageNavBtn">What is Investing</button>
+          <button type="button" id="investingInStocksNavBtn" class="secondary pageNavBtn">Investing in Stocks</button>
+          <button type="button" id="howToStartInvestingNavBtn" class="secondary pageNavBtn">How to Start Investing</button>
+          <button type="button" id="stocksNavBtn" class="secondary pageNavBtn">Stock Insights</button>
+          <button type="button" id="adminNavBtn" class="secondary hidden">Admin View</button>
+        </nav>
+        <button type="button" id="authActionBtn">Register/Log In</button>
+      </div>
+    </header>
+
+    <section class="container">
+      <div class="marketCountdown" id="marketCountdown">
+        <p class="muted">Time Until Market Opens (NYSE)</p>
+        <div id="marketCountdownValue" class="countdownValue">--:--:--</div>
+        <p id="marketCountdownMeta" class="muted"></p>
+      </div>
+    </section>
+
+    <main class="container">
+      <section id="homePage" class="card">
+        <h2>Weekly Stock Guidance</h2>
+        <p>
+          We update our Stock Insights weekly based on market conditions,
+          company performance, and risk trends.
+        </p>
+        <p>
+          Check the Stocks page to see what we currently believe you should buy or sell.
+        </p>
+      </section>
+
+      <section id="whatIsInvestingPage" class="card hidden">
+        <h2>What is Investing?</h2>
+        <p>
+          Investing is putting money into assets with the goal of growing your wealth over time.
+          Instead of keeping all money in cash, investors buy things like stocks, bonds, or funds
+          that can increase in value or pay income.
+        </p>
+        <p>
+          The core idea is long-term growth: your money can earn returns, and those returns can
+          compound over years. Investing always has risk, but diversification and patience can help
+          reduce that risk.
+        </p>
+      </section>
+
+      <section id="investingInStocksPage" class="card hidden">
+        <h2>Investing in Stocks</h2>
+        <p>
+          A stock is a share of ownership in a company. When you buy a stock, your return comes
+          from potential price growth and sometimes dividends.
+        </p>
+        <p>
+          Stock investing usually works best with a plan: choose quality companies or broad index
+          funds, spread risk across multiple holdings, and focus on a long-term horizon instead of
+          short-term price swings.
+        </p>
+      </section>
+
+      <section id="howToStartInvestingPage" class="card hidden">
+        <h2>How to Start Investing</h2>
+        <p>
+          Start by setting a clear goal and timeline, then build an emergency fund before putting
+          money into the market.
+        </p>
+        <p>
+          Open a brokerage account, contribute consistently, and begin with diversified choices
+          such as broad index funds or a balanced mix of strong companies.
+        </p>
+      </section>
+
+      <section id="stocksPage" class="card hidden">
+          <h2>Stock Insights</h2>
+        <p id="welcomeText" class="muted"></p>
+          <p class="muted stocksPastInfo">
+            Stocks move to Past Stock Insights after being marked SELL for 5 business days.
+          </p>
+          <div class="buttonRow stocksTabs" role="tablist" aria-label="Stock recommendation views">
+            <button type="button" id="currentRecsTabBtn" class="secondary" role="tab" aria-selected="true">Current Stock Insights</button>
+            <button type="button" id="pastRecsTabBtn" class="secondary" role="tab" aria-selected="false">Past Stock Insights</button>
+          </div>
+        <div id="stockFilterBar" class="stockFilterBar hidden">
+          <label class="inlineControl" for="stockFilterType">Filter by</label>
+          <select id="stockFilterType">
+            <option value="name">Name</option>
+            <option value="price">Stock Price (at or below)</option>
+            <option value="sector">Sector</option>
+          </select>
+          <input id="stockFilterValue" type="text" placeholder="Enter name" />
+          <select id="stockSectorFilter" class="hidden"></select>
+          <button type="button" id="applyStockFilterBtn" class="secondary">Filter</button>
+          <button type="button" id="clearStockFilterBtn" class="secondary">Clear</button>
+        </div>
+        <div id="stocksLockedMessage" class="muted">
+          Please log in to view the stocks we recommend buying or selling.
+        </div>
+        <div id="stockList" class="stack"></div>
+        <div id="pastStockList" class="stack hidden"></div>
+      </section>
+
+      <section id="stockDetailPage" class="card hidden">
+        <div class="buttonRow">
+          <h2 id="stockDetailTitle">Stock Details</h2>
+          <button type="button" id="stockDetailBackBtn" class="secondary">Back to Stocks</button>
+        </div>
+        <div class="buttonRow">
+          <label class="inlineControl" for="stockRangeSelect">Range</label>
+          <select id="stockRangeSelect">
+            <option value="1mo">1M</option>
+            <option value="3mo">3M</option>
+            <option value="6mo" selected>6M</option>
+            <option value="1y">1Y</option>
+            <option value="max">MAX</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div id="customRangeControls" class="buttonRow hidden">
+          <label class="inlineControl" for="customStartDate">Start</label>
+          <input id="customStartDate" type="date" />
+          <label class="inlineControl" for="customEndDate">End</label>
+          <input id="customEndDate" type="date" />
+          <button type="button" id="applyCustomRangeBtn" class="secondary">Apply</button>
+        </div>
+        <p id="stockDetailMeta" class="muted"></p>
+        <p id="stockDetailRationale"></p>
+        <div class="rangeStats" id="stockRangeStats">
+          <article class="stockCard">
+            <p class="muted">Range High</p>
+            <strong id="stockRangeHighValue">--</strong>
+            <p class="muted" id="stockRangeHighDate"></p>
+          </article>
+          <article class="stockCard">
+            <p class="muted">Range Low</p>
+            <strong id="stockRangeLowValue">--</strong>
+            <p class="muted" id="stockRangeLowDate"></p>
+          </article>
+          <article class="stockCard rangeChangeCard">
+            <p class="muted">Range Gain/Loss</p>
+            <strong id="stockRangeChangeValue">--</strong>
+            <p class="muted" id="stockRangeChangeMeta"></p>
+          </article>
+        </div>
+        <div class="historyGraphWrap">
+          <canvas id="stockHistoryCanvas" class="historyCanvas" width="700" height="260"></canvas>
+          <div id="stockGraphTooltip" class="graphTooltip hidden"></div>
+        </div>
+        <button type="button" id="toggleHistoryBtn" class="secondary">Show Price History</button>
+        <section id="investmentCalculator" class="investmentCalcLayout">
+          <article class="calcPanel calcInputPanel">
+            <div class="calcHeader">
+              <h3>Investment Calculator</h3>
+              <p>Enter your investment details below.</p>
+            </div>
+            <div class="calcBody">
+              <label for="investmentMode">Share Amount</label>
+              <select id="investmentMode">
+                <option value="amount">By Money</option>
+                <option value="shares">By Shares</option>
+              </select>
+
+              <label id="investmentAmountLabel" for="investmentAmount">Amount</label>
+              <input id="investmentAmount" type="number" min="1" step="0.01" placeholder="1000" />
+
+              <label id="investmentSharesLabel" class="hidden" for="investmentShares">Amount</label>
+              <input id="investmentShares" class="hidden" type="number" min="0.0001" step="0.0001" placeholder="10" />
+
+              <label for="investmentDatePicker">Purchase Date</label>
+              <input id="investmentDatePicker" type="date" aria-label="Choose purchase date" />
+
+              <button type="button" id="calculateInvestmentBtn" class="calcActionBtn">Calculate</button>
+
+              <p id="investmentResult" class="muted"></p>
+              <div id="investmentOutcomeBox" class="investmentOutcomeBox hidden">
+                <p><strong>Purchase Price:</strong> <span id="investmentPurchasePrice">--</span></p>
+                <p><strong>Current Price:</strong> <span id="investmentCurrentPrice">--</span></p>
+                <p><strong>Position Value:</strong> <span id="investmentCurrentValue">--</span></p>
+                <p><strong>Gain/Loss:</strong> <span id="investmentGainLoss">--</span></p>
+              </div>
+            </div>
+          </article>
+
+          <article class="calcPanel calcInfoPanel">
+            <div class="calcHeader calcHeaderCentered">
+              <h3>Instructions</h3>
+            </div>
+            <div class="calcBody calcInfoBody">
+              <p>
+                The Investment Return Calculator allows you to analyze how a stock investment would have
+                performed based on a specific buy date and position size.
+              </p>
+              <p>
+                This tool helps you understand historical performance and visualize how capital may have grown
+                over time.
+              </p>
+
+              <h4>Inputs Required</h4>
+              <div class="calcSteps">
+                <div class="calcStep" data-step="1">
+                  <p class="calcStepTitle">Investment Method</p>
+                  <p>Choose whether you&rsquo;d like to calculate your return based on:</p>
+                  <ul>
+                    <li>Number of Shares</li>
+                    <li>Total Dollar Amount Invested</li>
+                  </ul>
+                </div>
+                <div class="calcStep" data-step="2">
+                  <p class="calcStepTitle">Position Size</p>
+                  <p>Enter either:</p>
+                  <ul>
+                    <li>The number of shares purchased</li>
+                    <li>The dollar amount invested</li>
+                  </ul>
+                </div>
+                <div class="calcStep" data-step="3">
+                  <p class="calcStepTitle">Buy Date</p>
+                  <p>Select the date you would have initiated the position.</p>
+                </div>
+                <div class="calcStep" data-step="4">
+                  <p class="calcStepTitle">Calculate</p>
+                  <p>Click &ldquo;Calculate&rdquo; to view the results.</p>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+        <section class="calcDetailsGrid">
+          <article class="calcPanel calcDetailCard">
+            <div class="calcHeader calcHeaderCentered">
+              <h4>What The Calculator Shows</h4>
+            </div>
+            <div class="calcBody calcDetailBody">
+              <p>Based on your selected date and position size, the calculator will display:</p>
+              <ul>
+                <li>Total investment value today</li>
+                <li>Dollar gain or loss</li>
+                <li>Percentage return</li>
+                <li>Overall growth of capital</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="calcPanel calcDetailCard">
+            <div class="calcHeader calcHeaderCentered">
+              <h4>Example</h4>
+            </div>
+            <div class="calcBody calcDetailBody">
+              <p>If you invested $5,000 in a stock on January 1, 2020, the calculator will show:</p>
+              <ul>
+                <li>What that investment would be worth today</li>
+                <li>The total profit or loss</li>
+                <li>The percentage return over the selected time period</li>
+              </ul>
+            </div>
+          </article>
+
+          <article class="calcPanel calcDetailCard calcDetailCardWide">
+            <div class="calcHeader calcHeaderCenterBoth">
+              <h4>Why This Matters</h4>
+            </div>
+            <div class="calcBody calcDetailBody calcDetailBodyCentered">
+              <p>Understanding historical performance helps investors:</p>
+              <ol class="calcNumberList">
+                <li>Visualize long-term growth</li>
+                <li>Compare opportunities</li>
+                <li>Evaluate risk vs. return</li>
+                <li>Make more informed decisions</li>
+              </ol>
+            </div>
+          </article>
+
+          <article class="calcPanel calcDetailCard calcDetailCardWide">
+            <div class="calcHeader calcHeaderCenterBoth">
+              <h4>Important Note</h4>
+            </div>
+            <div class="calcBody calcDetailBody calcDetailBodyCentered">
+              <p>This calculator uses historical market data for informational purposes only.</p>
+              <p>Past performance does not guarantee future results.</p>
+              <p>All investments involve risk, including the possible loss of principal.</p>
+            </div>
+          </article>
+        </section>
+        <section id="stockHistorySection" class="hidden">
+          <h3>Recent Price History</h3>
+          <div id="stockHistoryList" class="stack"></div>
+        </section>
+      </section>
+
+      <section id="authPanel" class="card hidden">
+        <h2 id="authTitle">Welcome Back</h2>
+        <form id="authForm" class="stack">
+          <label>
+            Name
+            <input id="name" name="name" minlength="2" required />
+          </label>
+          <label>
+            Email (username)
+            <div class="inputWithIcon">
+              <span class="leftIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+                  <path d="M4 7l8 6 8-6"></path>
+                </svg>
+              </span>
+              <input id="email" name="email" type="email" placeholder="you@gmail.com" required />
+            </div>
+          </label>
+          <label>
+            Password
+            <div class="inputWithIcon">
+              <span class="leftIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <rect x="5" y="10" width="14" height="10" rx="2" ry="2"></rect>
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                </svg>
+              </span>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                minlength="8"
+                required
+              />
+              <button type="button" id="passwordVisibilityBtn" class="iconBtn" aria-label="Show password">
+                <svg class="eyeOpen" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg class="eyeClosed hidden" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M4 20L20 4"></path>
+                </svg>
+              </button>
+            </div>
+          </label>
+          <label id="confirmPasswordRow" class="hidden">
+            Retype Password
+            <div class="inputWithIcon">
+              <span class="leftIcon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <rect x="5" y="10" width="14" height="10" rx="2" ry="2"></rect>
+                  <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
+                </svg>
+              </span>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                minlength="8"
+              />
+            </div>
+          </label>
+          <div id="registerTermsSection" class="registerTerms hidden">
+            <p class="registerTermsVersion">Terms and Conditions Version 1.1</p>
+            <iframe
+              class="registerTermsFrame"
+              src="terms-content.html"
+              title="Terms and Conditions Version 1.1"
+              loading="lazy"
+            ></iframe>
+            <label class="termsAgreeRow" for="agreeTerms">
+              <input id="agreeTerms" name="agreeTerms" type="checkbox" />
+              <span>I agree to the Terms and Conditions (Version 1.1).</span>
+            </label>
+          </div>
+          <div class="buttonRow">
+            <button type="button" id="authSubmitBtn">Log In</button>
+          </div>
+          <p id="authSwitchText" class="muted">Don't have an account?</p>
+          <button type="button" id="switchAuthModeBtn" class="secondary">Register</button>
+        </form>
+      </section>
+
+      <section id="termsAcceptancePage" class="card hidden">
+        <h2>Terms and Conditions Update Required</h2>
+        <p class="muted">To continue, please review and accept Terms and Conditions Version 1.1.</p>
+        <div class="registerTerms">
+          <p class="registerTermsVersion">Terms and Conditions Version 1.1</p>
+          <iframe
+            class="registerTermsFrame"
+            src="terms-content.html"
+            title="Terms and Conditions Version 1.1"
+            loading="lazy"
+          ></iframe>
+          <label class="termsAgreeRow" for="acceptUpdatedTerms">
+            <input id="acceptUpdatedTerms" name="acceptUpdatedTerms" type="checkbox" />
+            <span>I agree to the Terms and Conditions (Version 1.1).</span>
+          </label>
+          <div class="buttonRow termsAcceptanceActions">
+            <button type="button" id="acceptTermsBtn">Accept Terms and Continue</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="adminPage" class="card hidden">
+        <h2>Admin View</h2>
+        <p class="muted">Edit Stock Insights and review registered users.</p>
+        <div class="buttonRow adminTabs" role="tablist" aria-label="Admin sections">
+          <button type="button" id="adminStocksTabBtn" class="secondary" role="tab" aria-selected="true">Manage Stocks</button>
+          <button type="button" id="adminUsersTabBtn" class="secondary" role="tab" aria-selected="false">Registered Users</button>
+        </div>
+
+        <section id="adminStocksSection">
+          <form id="adminForm" class="stack">
+            <input id="adminRecommendationId" type="hidden" />
+            <label>
+              Ticker
+              <input id="adminTicker" maxlength="8" required />
+            </label>
+            <label>
+              Company
+              <input id="adminCompany" required />
+            </label>
+            <label>
+              Action
+              <select id="adminAction">
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+                <option value="HOLD">HOLD</option>
+              </select>
+            </label>
+            <label>
+              Sector
+              <select id="adminSector" required>
+                <option value="Communication Services">Communication Services (Companies that provide communication and content.)</option>
+                <option value="Consumer Discretionary">Consumer Discretionary (Non-essential goods and services (things people buy when they have extra money).)</option>
+                <option value="Consumer Staples">Consumer Staples (Essential products people buy regardless of economic conditions.)</option>
+                <option value="Energy">Energy (Oil, gas, and renewable energy companies.)</option>
+                <option value="Financials">Financials (Banks, insurance, and investment firms.)</option>
+                <option value="Health Care">Health Care (Pharmaceutical, biotech, medical devices, hospitals.)</option>
+                <option value="Industrials">Industrials (Manufacturing, aerospace, transportation, construction.)</option>
+                <option value="Information Technology">Information Technology (Software, hardware, semiconductors.)</option>
+                <option value="Materials">Materials (Raw materials like chemicals, metals, and mining.)</option>
+                <option value="Real Estate">Real Estate (REITs and property management companies.)</option>
+                <option value="Utilities">Utilities (Electric, gas, and water providers.)</option>
+              </select>
+            </label>
+            <label>
+              Rationale
+              <input id="adminRationale" required />
+            </label>
+            <div class="buttonRow">
+              <button type="button" id="adminSaveBtn">Save</button>
+              <button type="button" id="adminResetBtn" class="secondary">Clear</button>
+            </div>
+          </form>
+
+          <h3>Manage Stock Insights</h3>
+          <div id="adminList" class="stack"></div>
+
+          <h3>Past Stock Insights</h3>
+          <p class="muted">Delete Stock Insights that have been in SELL status for 5+ business days.</p>
+          <div id="adminPastList" class="stack"></div>
+        </section>
+
+        <section id="adminUsersSection" class="hidden">
+          <h3>Registered Users</h3>
+          <div id="adminUsersList" class="stack"></div>
+        </section>
+      </section>
+
+      <p id="message" aria-live="polite"></p>
+    </main>
+
+    <footer class="siteFooter">
+      <div class="container footerPanel">
+        <section class="footerColumn footerBrand">
+          <h3>Holm Investing Solutions</h3>
+          <p>We evaluate market trends, company performance, and risk signals show users our market insights.</p>
+          <p class="footerMetaLine">
+            <span class="footerIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+                <path d="M4 7l8 6 8-6"></path>
+              </svg>
+            </span>
+            <a href="mailto:Team@HolmInvestingSolutions.com">Team@HolmInvestingSolutions.com</a>
+          </p>
+          <p class="footerMetaLine">
+            <span class="footerIcon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M12 21s-6-5.2-6-11a6 6 0 0 1 12 0c0 5.8-6 11-6 11z"></path>
+                <circle cx="12" cy="10" r="2.2"></circle>
+              </svg>
+            </span>
+            <span>United States</span>
+          </p>
+        </section>
+
+        <nav class="footerColumn" aria-label="Company">
+          <h3>Company</h3>
+          <a href="#" data-footer-page="home">Home</a>
+          <a href="#" data-footer-page="whatIsInvesting">What is Investing</a>
+          <a href="#" data-footer-page="investingInStocks">Investing in Stocks</a>
+          <a href="#" data-footer-page="howToStartInvesting">How to Start Investing</a>
+          <a href="#" data-footer-page="stocks">Stock Insights</a>
+        </nav>
+
+        <nav class="footerColumn" aria-label="Legal">
+          <h3>Legal</h3>
+          <a href="terms.html">Terms of Service</a>
+          <a href="privacy.html">Privacy Policy</a>
+        </nav>
+
+        <div class="footerBottom">
+          <p class="footerCopyright">© Holm Investing Solutions. All rights reserved.</p>
+          <p class="footerDisclaimer">Disclaimer: Content provided is for informational purposes only and is not financial advice. Holm Investing Solutions is not responsible for investment losses.</p>
+        </div>
+      </div>
+    </footer>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

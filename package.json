@@ -1,0 +1,34 @@
+{
+  "name": "investing-solutions",
+  "version": "1.0.0",
+  "description": "Stock recommendation web app with user accounts",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"No tests configured\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Holm2015/Investing-Solutions.git"
+  },
+  "keywords": [
+    "stocks",
+    "recommendations",
+    "auth",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Holm2015/Investing-Solutions/issues"
+  },
+  "homepage": "https://github.com/Holm2015/Investing-Solutions#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0"
+  }
+}
