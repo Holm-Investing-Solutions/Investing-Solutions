@@ -682,8 +682,24 @@ button:disabled {
   box-sizing: border-box;
 }
 
+.calcHeaderCentered {
+  display: flex;
+  align-items: center;
+}
+
+.calcHeaderCenterBoth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
 .calcHeader h3,
 .calcHeader p {
+  margin: 0;
+}
+
+.calcHeader h4 {
   margin: 0;
 }
 
@@ -767,6 +783,115 @@ button:disabled {
   margin: 0.3rem 0;
 }
 
+.calcInfoBody h4 {
+  margin: 0.7rem 0 0.2rem;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #9a3d00;
+}
+
+.calcSteps {
+  margin: 0.2rem 0 0.55rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.calcStep {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.calcStep::before {
+  content: attr(data-step);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #ff5f00;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calcStepTitle {
+  margin: 0;
+  font-weight: 700;
+  color: #9a3d00;
+}
+
+.calcInfoBody ul {
+  margin: 0.15rem 0 0.45rem 1.1rem;
+  padding: 0;
+}
+
+.calcInfoBody li {
+  margin: 0.12rem 0;
+  line-height: 1.35;
+}
+
+.calcDetailsGrid {
+  margin-top: 0.95rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.9rem;
+}
+
+.calcDetailCard {
+  padding: 0;
+}
+
+.calcDetailCardWide {
+  grid-column: 1 / -1;
+}
+
+.calcDetailBody h4 {
+  margin: 0.7rem 0 0.2rem;
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #9a3d00;
+}
+
+.calcDetailBody {
+  gap: 0.2rem;
+}
+
+.calcDetailBody p {
+  margin: 0.3rem 0;
+}
+
+.calcDetailBody ul {
+  margin: 0.15rem 0 0.45rem 1.1rem;
+  padding: 0;
+}
+
+.calcDetailBody li {
+  margin: 0.12rem 0;
+  line-height: 1.35;
+}
+
+.calcDetailBodyCentered {
+  text-align: center;
+}
+
+.calcDetailBodyCentered ul,
+.calcDetailBodyCentered ol {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.calcNumberList {
+  margin: 0.2rem auto 0.45rem;
+  padding-left: 1.35rem;
+  list-style-position: outside;
+  text-align: left;
+  display: inline-block;
+}
+
 @media (max-width: 900px) {
   .rangeStats {
     grid-template-columns: 1fr;
@@ -774,6 +899,14 @@ button:disabled {
 
   .investmentCalcLayout {
     grid-template-columns: 1fr;
+  }
+
+  .calcDetailsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .calcDetailCardWide {
+    grid-column: auto;
   }
 }
 
