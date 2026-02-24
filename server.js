@@ -80,6 +80,21 @@ function getSupabaseWriteConfigErrorMessage() {
   return "Server configuration error: set SUPABASE_SERVICE_ROLE_KEY for backend writes.";
 }
 
+async function runSupabaseAdminStartupProbe() {
+  try {
+    const { error } = await supabaseAdmin.from("recommendations").select("id").limit(1);
+
+    if (error) {
+      console.error("SUPABASE ADMIN STARTUP PROBE ERROR:", formatSupabaseError(error, "Unknown Supabase error."));
+      return;
+    }
+
+    console.log("SUPABASE ADMIN STARTUP PROBE: OK");
+  } catch (error) {
+    console.error("SUPABASE ADMIN STARTUP PROBE EXCEPTION:", formatSupabaseError(error, "Unknown startup probe exception."));
+  }
+}
+
 function isSupabaseWritePermissionError(error) {
   const message = formatSupabaseError(error, "").toLowerCase();
   return (
@@ -560,6 +575,8 @@ async function ensureDefaultAdminUser() {
 Promise.all([ensureDefaultAdminUser(), ensureDefaultRecommendations()]).catch((error) => {
   console.error(error.message);
 });
+
+runSupabaseAdminStartupProbe();
 
 app.post("/api/auth/register", async (req, res) => {
   if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
