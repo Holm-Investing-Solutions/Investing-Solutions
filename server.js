@@ -2,14 +2,12 @@ const path = require("path");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
-const { createClient } = require("@supabase/supabase-js");
+const supabase = require("./supabaseAdmin");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY;
 const HAS_SUPABASE_SERVICE_ROLE_KEY = Boolean(String(SUPABASE_SERVICE_ROLE_KEY || "").trim());
 
 if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
@@ -18,13 +16,6 @@ if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 }
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-});
 
 const DEFAULT_ADMIN = {
   name: "ADMIN2073",
