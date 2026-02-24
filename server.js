@@ -7,14 +7,18 @@ const { createClient } = require("@supabase/supabase-js");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const SUPABASE_URL =
-  process.env.SUPABASE_URL || "https://kmcdwnfzenrgbhrqtnaj.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY =
-  process.env.SUPABASE_PUBLISHABLE_KEY ||
-  "sb_publishable_1dAPRqeGHhaD2Vz9qU1_9w_BBKBB8Rn";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY;
 const HAS_SUPABASE_SERVICE_ROLE_KEY = Boolean(String(SUPABASE_SERVICE_ROLE_KEY || "").trim());
+
+if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
+  console.error(
+    "SUPABASE_SERVICE_ROLE_KEY is missing at runtime. Value:",
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: false,
