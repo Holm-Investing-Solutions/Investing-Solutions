@@ -220,6 +220,7 @@ async function ensureDefaultRecommendations() {
     return;
   }
 
+  console.log("USING ADMIN CLIENT FOR RECOMMENDATIONS WRITE");
   const { error: insertError } = await supabaseAdmin.from("recommendations").insert(DEFAULT_RECOMMENDATIONS);
 
   if (insertError) {
@@ -851,6 +852,7 @@ app.post("/api/admin/recommendations", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Ticker, company, sector, rationale, and BUY/SELL/HOLD action are required." });
   }
 
+  console.log("USING ADMIN CLIENT FOR RECOMMENDATIONS WRITE");
   const { data, error } = await supabaseAdmin
     .from("recommendations")
     .insert({
