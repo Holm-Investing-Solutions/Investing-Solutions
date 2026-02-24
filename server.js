@@ -2,7 +2,7 @@ const path = require("path");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
-const supabase = require("./supabaseAdmin");
+const supabaseAdmin = require("./supabaseAdmin");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -103,7 +103,7 @@ function getSessionExpirationDate(sessionData) {
 class SupabaseSessionStore extends session.Store {
   async get(sid, callback) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from("sessions")
         .select("sess, expire")
         .eq("sid", sid)
@@ -121,7 +121,7 @@ class SupabaseSessionStore extends session.Store {
 
       const expiration = new Date(data.expire);
       if (!Number.isFinite(expiration.getTime()) || expiration.getTime() <= Date.now()) {
-        await supabase.from("sessions").delete().eq("sid", sid);
+        await supabaseAdmin.from("sessions").delete().eq("sid", sid);
         callback(null, null);
         return;
       }
@@ -135,7 +135,7 @@ class SupabaseSessionStore extends session.Store {
   async set(sid, sessionData, callback) {
     try {
       const expiration = getSessionExpirationDate(sessionData);
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from("sessions")
         .upsert(
           {
@@ -154,7 +154,7 @@ class SupabaseSessionStore extends session.Store {
 
   async destroy(sid, callback) {
     try {
-      const { error } = await supabase.from("sessions").delete().eq("sid", sid);
+      const { error } = await supabaseAdmin.from("sessions").delete().eq("sid", sid);
       callback(error ? new Error(formatSupabaseError(error, "Failed to delete session.")) : null);
     } catch (error) {
       callback(new Error(formatSupabaseError(error, "Failed to delete session.")));
@@ -164,7 +164,7 @@ class SupabaseSessionStore extends session.Store {
   async touch(sid, sessionData, callback) {
     try {
       const expiration = getSessionExpirationDate(sessionData);
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from("sessions")
         .update({ expire: expiration.toISOString() })
         .eq("sid", sid);
@@ -191,7 +191,7 @@ function mapRecommendationForClient(row) {
 }
 
 async function getAllRecommendations() {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("recommendations")
     .select("id, ticker, company, action, rationale, sector, locked_change_percent, updated_at")
     .order("id", { ascending: false });
@@ -208,7 +208,7 @@ async function ensureDefaultRecommendations() {
     throw new Error(getSupabaseWriteConfigErrorMessage());
   }
 
-  const { count, error: countError } = await supabase
+  const { count, error: countError } = await supabaseAdmin
     .from("recommendations")
     .select("id", { count: "exact", head: true });
 
@@ -220,7 +220,7 @@ async function ensureDefaultRecommendations() {
     return;
   }
 
-  const { error: insertError } = await supabase.from("recommendations").insert(DEFAULT_RECOMMENDATIONS);
+  const { error: insertError } = await supabaseAdmin.from("recommendations").insert(DEFAULT_RECOMMENDATIONS);
 
   if (insertError) {
     throw new Error(formatSupabaseError(insertError, "Failed to seed recommendations."));
@@ -321,7 +321,7 @@ async function enrichRecommendationSectors(stocks) {
         };
       }
 
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from("recommendations")
         .update({
           sector: resolvedSector,
@@ -376,7 +376,7 @@ function hasAcceptedCurrentTerms(user) {
 }
 
 async function getUserById(userId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("users")
     .select("id, name, email, password_hash, created_at, terms_accepted_at, terms_version_accepted")
     .eq("id", userId)
@@ -391,7 +391,7 @@ async function getUserById(userId) {
 
 async function getUserByEmail(email) {
   const normalizedEmail = normalizeEmail(email);
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("users")
     .select("id, name, email, password_hash, created_at, terms_accepted_at, terms_version_accepted")
     .eq("email", normalizedEmail)
@@ -501,7 +501,7 @@ async function ensureDefaultAdminUser() {
 
   const existingAdmin = await getUserByEmail(adminEmail);
   if (existingAdmin) {
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("users")
       .update({
         name: DEFAULT_ADMIN.name,
@@ -517,7 +517,7 @@ async function ensureDefaultAdminUser() {
   }
 
   const legacyEmails = LEGACY_DEFAULT_ADMIN_EMAILS.map((email) => normalizeEmail(email));
-  const { data: legacyUsers, error: legacyLookupError } = await supabase
+  const { data: legacyUsers, error: legacyLookupError } = await supabaseAdmin
     .from("users")
     .select("id, email")
     .in("email", legacyEmails)
@@ -529,7 +529,7 @@ async function ensureDefaultAdminUser() {
 
   const legacyAdmin = legacyUsers?.[0];
   if (legacyAdmin) {
-    const { error: legacyUpdateError } = await supabase
+    const { error: legacyUpdateError } = await supabaseAdmin
       .from("users")
       .update({
         name: DEFAULT_ADMIN.name,
@@ -545,7 +545,7 @@ async function ensureDefaultAdminUser() {
     return;
   }
 
-  const { error: insertError } = await supabase.from("users").insert({
+  const { error: insertError } = await supabaseAdmin.from("users").insert({
     name: DEFAULT_ADMIN.name,
     email: adminEmail,
     password_hash: passwordHash,
@@ -586,7 +586,7 @@ app.post("/api/auth/register", async (req, res) => {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     const termsAcceptedAt = new Date().toISOString();
-    const { data: newUser, error: insertError } = await supabase
+    const { data: newUser, error: insertError } = await supabaseAdmin
       .from("users")
       .insert({
         name,
@@ -744,7 +744,7 @@ app.post("/api/auth/accept-terms", requireAuth, async (req, res) => {
   }
 
   const termsAcceptedAt = new Date().toISOString();
-  const { data: updatedUser, error: updateError } = await supabase
+  const { data: updatedUser, error: updateError } = await supabaseAdmin
     .from("users")
     .update({
       terms_accepted_at: termsAcceptedAt,
@@ -793,7 +793,7 @@ app.get("/api/admin/recommendations", requireAdmin, async (req, res) => {
 });
 
 app.get("/api/admin/users", requireAdmin, async (req, res) => {
-  const { data: users, error } = await supabase
+  const { data: users, error } = await supabaseAdmin
     .from("users")
     .select("id, name, email, created_at, terms_accepted_at, terms_version_accepted")
     .order("created_at", { ascending: false });
@@ -817,7 +817,7 @@ app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "You cannot delete the currently logged-in user." });
   }
 
-  const { data: deletedUser, error } = await supabase
+  const { data: deletedUser, error } = await supabaseAdmin
     .from("users")
     .delete()
     .eq("id", id)
@@ -851,7 +851,7 @@ app.post("/api/admin/recommendations", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Ticker, company, sector, rationale, and BUY/SELL/HOLD action are required." });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("recommendations")
     .insert({
       ticker,
@@ -891,7 +891,7 @@ app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Ticker, company, sector, rationale, and BUY/SELL/HOLD action are required." });
   }
 
-  const { data: existing, error: existingError } = await supabase
+  const { data: existing, error: existingError } = await supabaseAdmin
     .from("recommendations")
     .select("id, ticker, action, updated_at, locked_change_percent")
     .eq("id", id)
@@ -918,7 +918,7 @@ app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
     }
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await supabaseAdmin
     .from("recommendations")
     .update({
       ticker,
@@ -949,7 +949,7 @@ app.delete("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Invalid recommendation id." });
   }
 
-  const { data: deletedRow, error } = await supabase
+  const { data: deletedRow, error } = await supabaseAdmin
     .from("recommendations")
     .delete()
     .eq("id", id)
