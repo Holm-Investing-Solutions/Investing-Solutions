@@ -1,3 +1,6 @@
+// Load environment variables from .env file FIRST (must be before any other requires that use env vars)
+require("dotenv").config();
+
 const path = require("path");
 const express = require("express");
 const session = require("express-session");
@@ -5,17 +8,36 @@ const bcrypt = require("bcryptjs");
 const supabaseAdmin = require("./supabaseAdmin");
 
 const app = express();
+
+// Required environment variables
+const REQUIRED_ENV_VARS = {
+  SUPABASE_URL: process.env.SUPABASE_URL,
+  SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+};
+
+// Check for missing required environment variables
+const missingVars = Object.entries(REQUIRED_ENV_VARS)
+  .filter(([_, value]) => !value || String(value).trim() === "")
+  .map(([key]) => key);
+
+if (missingVars.length > 0) {
+  console.error(
+    "ERROR: The following required environment variables are missing or empty:",
+    missingVars.join(", ")
+  );
+  console.error(
+    "Please ensure your .env file contains: SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY"
+  );
+  process.exit(1);
+}
+
+console.log("✓ All required environment variables loaded successfully");
+
 const PORT = process.env.PORT || 3000;
 
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const HAS_SUPABASE_SERVICE_ROLE_KEY = Boolean(String(SUPABASE_SERVICE_ROLE_KEY || "").trim());
-
-if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
-  console.error(
-    "SUPABASE_SERVICE_ROLE_KEY is missing at runtime. Value:",
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-}
+// Since we validate SUPABASE_SERVICE_ROLE_KEY at startup, we know it exists if code reaches here
+const HAS_SUPABASE_SERVICE_ROLE_KEY = true;
 
 const DEFAULT_ADMIN = {
   name: "ADMIN2073",
