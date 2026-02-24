@@ -7,9 +7,6 @@ const supabaseAdmin = require("./supabaseAdmin");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-console.log("ENV CHECK SUPABASE_URL:", !!process.env.SUPABASE_URL);
-console.log("ENV CHECK SUPABASE_SERVICE_ROLE_KEY:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const HAS_SUPABASE_SERVICE_ROLE_KEY = Boolean(String(SUPABASE_SERVICE_ROLE_KEY || "").trim());
 
@@ -78,58 +75,6 @@ function formatSupabaseError(error, fallbackMessage) {
 
 function getSupabaseWriteConfigErrorMessage() {
   return "Server configuration error: set SUPABASE_SERVICE_ROLE_KEY for backend writes.";
-}
-
-async function runSupabaseAdminStartupProbe() {
-  try {
-    const { error } = await supabaseAdmin.from("recommendations").select("id").limit(1);
-
-    if (error) {
-      console.error("SUPABASE ADMIN STARTUP PROBE ERROR:", formatSupabaseError(error, "Unknown Supabase error."));
-      return;
-    }
-
-    console.log("SUPABASE ADMIN STARTUP PROBE: OK");
-  } catch (error) {
-    console.error("SUPABASE ADMIN STARTUP PROBE EXCEPTION:", formatSupabaseError(error, "Unknown startup probe exception."));
-  }
-}
-
-async function runSupabaseAdminInsertTest() {
-  try {
-    const testTicker = `ADMINTEST_${Date.now()}`;
-    const { data, error } = await supabaseAdmin
-      .from("recommendations")
-      .insert({
-        ticker: testTicker,
-        company: "Admin Insert Test",
-        action: "HOLD",
-        rationale: "Temporary startup admin insert verification.",
-        sector: "Unspecified",
-      })
-      .select("id")
-      .single();
-
-    if (error) {
-      console.error("ADMIN INSERT TEST ERROR:", formatSupabaseError(error, "Unknown Supabase error."));
-      return;
-    }
-
-    console.log("ADMIN INSERT TEST: OK");
-
-    if (data?.id) {
-      const { error: cleanupError } = await supabaseAdmin
-        .from("recommendations")
-        .delete()
-        .eq("id", data.id);
-
-      if (cleanupError) {
-        console.error("ADMIN INSERT TEST CLEANUP ERROR:", formatSupabaseError(cleanupError, "Unknown Supabase error."));
-      }
-    }
-  } catch (error) {
-    console.error("ADMIN INSERT TEST EXCEPTION:", formatSupabaseError(error, "Unknown admin insert test exception."));
-  }
 }
 
 function isSupabaseWritePermissionError(error) {
@@ -272,7 +217,6 @@ async function ensureDefaultRecommendations() {
     return;
   }
 
-  console.log("USING ADMIN CLIENT FOR RECOMMENDATIONS WRITE");
   const { error: insertError } = await supabaseAdmin.from("recommendations").insert(DEFAULT_RECOMMENDATIONS);
 
   if (insertError) {
@@ -613,9 +557,6 @@ Promise.all([ensureDefaultAdminUser(), ensureDefaultRecommendations()]).catch((e
   console.error(error.message);
 });
 
-runSupabaseAdminStartupProbe();
-runSupabaseAdminInsertTest();
-
 app.post("/api/auth/register", async (req, res) => {
   if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(500).json({ error: getSupabaseWriteConfigErrorMessage() });
@@ -907,7 +848,6 @@ app.post("/api/admin/recommendations", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Ticker, company, sector, rationale, and BUY/SELL/HOLD action are required." });
   }
 
-  console.log("USING ADMIN CLIENT FOR RECOMMENDATIONS WRITE");
   const { data, error } = await supabaseAdmin
     .from("recommendations")
     .insert({
