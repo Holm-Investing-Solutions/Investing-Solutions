@@ -95,6 +95,43 @@ async function runSupabaseAdminStartupProbe() {
   }
 }
 
+async function runSupabaseAdminInsertTest() {
+  try {
+    const testTicker = `ADMINTEST_${Date.now()}`;
+    const { data, error } = await supabaseAdmin
+      .from("recommendations")
+      .insert({
+        ticker: testTicker,
+        company: "Admin Insert Test",
+        action: "HOLD",
+        rationale: "Temporary startup admin insert verification.",
+        sector: "Unspecified",
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("ADMIN INSERT TEST ERROR:", formatSupabaseError(error, "Unknown Supabase error."));
+      return;
+    }
+
+    console.log("ADMIN INSERT TEST: OK");
+
+    if (data?.id) {
+      const { error: cleanupError } = await supabaseAdmin
+        .from("recommendations")
+        .delete()
+        .eq("id", data.id);
+
+      if (cleanupError) {
+        console.error("ADMIN INSERT TEST CLEANUP ERROR:", formatSupabaseError(cleanupError, "Unknown Supabase error."));
+      }
+    }
+  } catch (error) {
+    console.error("ADMIN INSERT TEST EXCEPTION:", formatSupabaseError(error, "Unknown admin insert test exception."));
+  }
+}
+
 function isSupabaseWritePermissionError(error) {
   const message = formatSupabaseError(error, "").toLowerCase();
   return (
@@ -577,6 +614,7 @@ Promise.all([ensureDefaultAdminUser(), ensureDefaultRecommendations()]).catch((e
 });
 
 runSupabaseAdminStartupProbe();
+runSupabaseAdminInsertTest();
 
 app.post("/api/auth/register", async (req, res) => {
   if (!HAS_SUPABASE_SERVICE_ROLE_KEY) {
