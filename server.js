@@ -7,6 +7,9 @@ const supabase = require("./supabaseAdmin");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+console.log("ENV CHECK SUPABASE_URL:", !!process.env.SUPABASE_URL);
+console.log("ENV CHECK SUPABASE_SERVICE_ROLE_KEY:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const HAS_SUPABASE_SERVICE_ROLE_KEY = Boolean(String(SUPABASE_SERVICE_ROLE_KEY || "").trim());
 
