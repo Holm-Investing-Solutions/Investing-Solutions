@@ -205,6 +205,9 @@ function mapRecommendationForClient(row) {
     sector: row.sector,
     lockedChangePercent:
       typeof row.locked_change_percent === "number" ? row.locked_change_percent : null,
+    entryPrice: typeof row.entry_price === "number" ? row.entry_price : null,
+    minBuyPrice: typeof row.min_buy_price === "number" ? row.min_buy_price : null,
+    maxBuyPrice: typeof row.max_buy_price === "number" ? row.max_buy_price : null,
     updatedAt: row.updated_at,
   };
 }
@@ -212,7 +215,7 @@ function mapRecommendationForClient(row) {
 async function getAllRecommendations() {
   const { data, error } = await supabaseAdmin
     .from("recommendations")
-    .select("id, ticker, company, action, rationale, sector, locked_change_percent, updated_at")
+    .select("id, ticker, company, action, rationale, sector, locked_change_percent, entry_price, min_buy_price, max_buy_price, updated_at")
     .order("id", { ascending: false });
 
   if (error) {
@@ -865,9 +868,43 @@ app.post("/api/admin/recommendations", requireAdmin, async (req, res) => {
   const action = String(req.body.action || "").trim().toUpperCase();
   const rationale = String(req.body.rationale || "").trim();
   const sector = String(req.body.sector || "").trim();
+  const minBuyPrice = typeof req.body.minBuyPrice === "number" ? req.body.minBuyPrice : null;
+  const maxBuyPrice = typeof req.body.maxBuyPrice === "number" ? req.body.maxBuyPrice : null;
+
+  console.log("POST /api/admin/recommendations received:", {
+    ticker,
+    company,
+    action,
+    rationale,
+    sector,
+    minBuyPrice,
+    maxBuyPrice,
+  });
 
   if (!ticker || !company || !rationale || !sector || !["BUY", "SELL", "HOLD"].includes(action)) {
     return res.status(400).json({ error: "Ticker, company, sector, rationale, and BUY/SELL/HOLD action are required." });
+  }
+
+  // Fetch current price as entry price for BUY actions
+  let entryPrice = null;
+  if (action === "BUY") {
+    try {
+      const response = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+          ticker
+        )}?range=5d&interval=1d`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const result = data?.chart?.result?.[0];
+        const closes = result?.indicators?.quote?.[0]?.close || [];
+        if (closes.length > 0) {
+          entryPrice = closes[closes.length - 1];
+        }
+      }
+    } catch (e) {
+      // If we can't fetch the price, just continue without entry price
+    }
   }
 
   const { data, error } = await supabaseAdmin
@@ -878,14 +915,20 @@ app.post("/api/admin/recommendations", requireAdmin, async (req, res) => {
       action,
       rationale,
       sector,
+      entry_price: entryPrice,
+      min_buy_price: minBuyPrice,
+      max_buy_price: maxBuyPrice,
       locked_change_percent: action === "SELL" ? 0 : null,
     })
     .select("id")
     .single();
 
   if (error) {
+    console.error("Supabase insert error:", error);
     return res.status(500).json({ error: "Failed to create recommendation." });
   }
+
+  console.log("Stock created successfully:", { id: data.id, entryPrice, minBuyPrice, maxBuyPrice });
 
   return res.status(201).json({ id: data.id });
 });
@@ -901,6 +944,8 @@ app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
   const action = String(req.body.action || "").trim().toUpperCase();
   const rationale = String(req.body.rationale || "").trim();
   const sector = String(req.body.sector || "").trim();
+  const minBuyPrice = typeof req.body.minBuyPrice === "number" ? req.body.minBuyPrice : null;
+  const maxBuyPrice = typeof req.body.maxBuyPrice === "number" ? req.body.maxBuyPrice : null;
 
   if (!Number.isInteger(id) || id <= 0) {
     return res.status(400).json({ error: "Invalid recommendation id." });
@@ -912,7 +957,7 @@ app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
 
   const { data: existing, error: existingError } = await supabaseAdmin
     .from("recommendations")
-    .select("id, ticker, action, updated_at, locked_change_percent")
+    .select("id, ticker, action, updated_at, locked_change_percent, entry_price")
     .eq("id", id)
     .maybeSingle();
 
@@ -925,8 +970,32 @@ app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
   }
 
   let lockedChangePercent = null;
+  let entryPrice = existing.entry_price || null;
   const wasSell = String(existing.action || "") === "SELL";
   const isSell = action === "SELL";
+  const wasBuy = String(existing.action || "") === "BUY";
+  const isBuy = action === "BUY";
+
+  // If changing to BUY and didn't have entry price, fetch current price
+  if (isBuy && !entryPrice) {
+    try {
+      const response = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+          ticker
+        )}?range=5d&interval=1d`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const result = data?.chart?.result?.[0];
+        const closes = result?.indicators?.quote?.[0]?.close || [];
+        if (closes.length > 0) {
+          entryPrice = closes[closes.length - 1];
+        }
+      }
+    } catch (e) {
+      // If we can't fetch the price, just continue without entry price
+    }
+  }
 
   if (isSell) {
     if (wasSell && typeof existing.locked_change_percent === "number") {
@@ -945,6 +1014,9 @@ app.put("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
       action,
       rationale,
       sector,
+      entry_price: entryPrice,
+      min_buy_price: minBuyPrice,
+      max_buy_price: maxBuyPrice,
       locked_change_percent: lockedChangePercent,
       updated_at: new Date().toISOString(),
     })

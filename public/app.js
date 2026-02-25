@@ -85,6 +85,8 @@ const adminCompany = document.getElementById("adminCompany");
 const adminAction = document.getElementById("adminAction");
 const adminSector = document.getElementById("adminSector");
 const adminRationale = document.getElementById("adminRationale");
+const adminMinBuyPrice = document.getElementById("adminMinBuyPrice");
+const adminMaxBuyPrice = document.getElementById("adminMaxBuyPrice");
 const adminSaveBtn = document.getElementById("adminSaveBtn");
 const adminResetBtn = document.getElementById("adminResetBtn");
 const adminStocksTabBtn = document.getElementById("adminStocksTabBtn");
@@ -384,6 +386,18 @@ function formatCountdown(totalSeconds) {
 function getNextMarketOpen() {
   const nowLocal = new Date();
   const nowEt = new Date(nowLocal.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  
+  // Check if market is currently open (9:30 AM to 4:00 PM ET, Monday-Friday)
+  const dayOfWeek = nowEt.getDay();
+  const hours = nowEt.getHours();
+  const minutes = nowEt.getMinutes();
+  const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+  const openTime = 9 * 60 + 30; // 9:30 AM in minutes
+  const closeTime = 16 * 60; // 4:00 PM in minutes
+  const currentTime = hours * 60 + minutes;
+  
+  const isMarketOpen = isWeekday && currentTime >= openTime && currentTime < closeTime;
+  
   const targetEt = new Date(nowEt);
   targetEt.setHours(9, 30, 0, 0);
 
@@ -398,6 +412,7 @@ function getNextMarketOpen() {
   }
 
   return {
+    isMarketOpen,
     secondsUntilOpen: Math.max(0, Math.floor((targetEt.getTime() - nowEt.getTime()) / 1000)),
     targetEt,
   };
@@ -405,16 +420,22 @@ function getNextMarketOpen() {
 
 function startMarketCountdown() {
   const update = () => {
-    const { secondsUntilOpen, targetEt } = getNextMarketOpen();
-    marketCountdownValue.textContent = formatCountdown(secondsUntilOpen);
-    marketCountdownMeta.textContent = `Next Open: ${targetEt.toLocaleString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })} ET`;
+    const { isMarketOpen, secondsUntilOpen, targetEt } = getNextMarketOpen();
+    
+    if (isMarketOpen) {
+      marketCountdownValue.textContent = "Market is Open";
+      marketCountdownMeta.textContent = "";
+    } else {
+      marketCountdownValue.textContent = formatCountdown(secondsUntilOpen);
+      marketCountdownMeta.textContent = `Next Open: ${targetEt.toLocaleString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      })} ET`;
+    }
   };
 
   update();
@@ -887,28 +908,37 @@ async function enrichRecommendations(stocks) {
       try {
         const details = await api(`/api/stocks/${encodeURIComponent(stock.ticker)}/history?range=max`);
         const latest = details.history[details.history.length - 1];
-        const recommendationDate = new Date(stock.updatedAt);
-        const recommendationMs = recommendationDate.getTime();
 
-        let entryPoint = null;
-        if (Number.isFinite(recommendationMs)) {
-          for (const point of details.history) {
-            const pointMs = new Date(point.date).getTime();
-            if (pointMs >= recommendationMs) {
-              entryPoint = point;
-              break;
+        // Use stored entry price if available, otherwise calculate from history
+        let pickChangePercent = null;
+        if (stock.action === "BUY" && typeof stock.entryPrice === "number" && stock.entryPrice > 0) {
+          // For BUY stocks, use the stored entry price
+          pickChangePercent = ((latest.close - stock.entryPrice) / stock.entryPrice) * 100;
+        } else if (stock.action !== "BUY") {
+          // For non-BUY stocks, try to find the entry point from history
+          const recommendationDate = new Date(stock.updatedAt);
+          const recommendationMs = recommendationDate.getTime();
+
+          let entryPoint = null;
+          if (Number.isFinite(recommendationMs)) {
+            for (const point of details.history) {
+              const pointMs = new Date(point.date).getTime();
+              if (pointMs >= recommendationMs) {
+                entryPoint = point;
+                break;
+              }
+            }
+
+            if (!entryPoint && details.history.length) {
+              entryPoint = details.history[details.history.length - 1];
             }
           }
 
-          if (!entryPoint && details.history.length) {
-            entryPoint = details.history[details.history.length - 1];
+          if (entryPoint && typeof entryPoint.close === "number" && entryPoint.close > 0) {
+            pickChangePercent = ((latest.close - entryPoint.close) / entryPoint.close) * 100;
           }
         }
 
-        const pickChangePercent =
-          entryPoint && typeof entryPoint.close === "number" && entryPoint.close > 0
-            ? ((latest.close - entryPoint.close) / entryPoint.close) * 100
-            : null;
         const effectivePickChangePercent =
           stock.action === "SELL" && typeof stock.lockedChangePercent === "number"
             ? stock.lockedChangePercent
@@ -989,18 +1019,37 @@ function renderStockCards(targetList, stocks, emptyMessage) {
     const percentText =
       typeof stock.pickChangePercent === "number" ? formatPercent(stock.pickChangePercent) : "--";
 
+    // Format buy price and range
+    const entryPriceText = typeof stock.entryPrice === "number" ? formatPrice(stock.entryPrice) : "N/A";
+    const minBuyText = typeof stock.minBuyPrice === "number" ? formatPrice(stock.minBuyPrice) : null;
+    const maxBuyText = typeof stock.maxBuyPrice === "number" ? formatPrice(stock.maxBuyPrice) : null;
+    
+    let rangeText = "";
+    if (minBuyText && maxBuyText) {
+      rangeText = `Buy Range: ${minBuyText} - ${maxBuyText} • `;
+    } else if (minBuyText) {
+      rangeText = `Min Buy: ${minBuyText} • `;
+    } else if (maxBuyText) {
+      rangeText = `Max Buy: ${maxBuyText} • `;
+    }
+
     card.innerHTML = `
       <div class="headerRow">
-        <strong>${stock.ticker} — ${stock.company}</strong>
-        <div class="stockCardBadges">
-          <span class="pill ${actionClass}">${stock.action}</span>
-          <span class="pill changePill ${percentClass}">${percentText}</span>
+        <div>
+          <strong>${stock.ticker} — ${stock.company}</strong>
+        </div>
+        <div class="stockCardRightPanel">
+          <span class="pill ${actionClass} actionBadge">${stock.action}</span>
+          <p class="buyPriceInfo">Our Buy Price: ${entryPriceText}</p>
+          <p class="performanceLabel">Percent Up/Down</p>
+          <p class="performanceInfo"><span class="pill changePill ${percentClass}">${percentText}</span></p>
         </div>
       </div>
       <p>${stock.rationale}</p>
       <p class="muted">Sector: ${normalizeSectorName(stock.sector)} • Close: ${
         typeof stock.latestClose === "number" ? formatPrice(stock.latestClose) : "Unavailable"
       }</p>
+      ${rangeText ? `<p class="muted">${rangeText}</p>` : ""}
       <p class="muted">Updated: ${new Date(stock.updatedAt).toLocaleDateString()}</p>
     `;
     card.addEventListener("click", () => openStockDetails(stock.ticker, stock.company, stock.rationale));
@@ -1048,6 +1097,8 @@ function resetAdminForm() {
   adminAction.value = "BUY";
   adminSector.value = "Information Technology";
   adminRationale.value = "";
+  adminMinBuyPrice.value = "";
+  adminMaxBuyPrice.value = "";
 }
 
 function renderAdminList(stocks) {
@@ -1100,6 +1151,8 @@ function renderAdminList(stocks) {
         adminAction.value = selected.action;
         adminSector.value = normalizeSectorName(selected.sector);
         adminRationale.value = selected.rationale;
+        adminMinBuyPrice.value = selected.minBuyPrice || "";
+        adminMaxBuyPrice.value = selected.maxBuyPrice || "";
         setMessage("Loaded Stock Insight for editing.", false);
       } catch (error) {
         setMessage(error.message);
@@ -1552,6 +1605,8 @@ adminSaveBtn.addEventListener("click", async () => {
     action: adminAction.value,
     sector: normalizeSectorName(adminSector.value),
     rationale: adminRationale.value.trim(),
+    minBuyPrice: adminMinBuyPrice.value ? Number(adminMinBuyPrice.value) : null,
+    maxBuyPrice: adminMaxBuyPrice.value ? Number(adminMaxBuyPrice.value) : null,
   };
 
   if (!payload.ticker || !payload.company || !payload.sector || !payload.rationale) {

@@ -18,6 +18,9 @@ create table if not exists public.recommendations (
   rationale text not null,
   sector text not null default 'Unspecified',
   locked_change_percent double precision,
+  entry_price double precision,
+  min_buy_price double precision,
+  max_buy_price double precision,
   updated_at timestamptz not null default now()
 );
 

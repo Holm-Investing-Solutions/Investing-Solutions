@@ -366,6 +366,41 @@ button:disabled {
   gap: 0.35rem;
 }
 
+.stockCardRightPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.actionBadge {
+  padding: 0.6rem 1.2rem !important;
+  font-size: 1.4rem !important;
+  font-weight: 700 !important;
+}
+
+.buyPriceInfo {
+  margin: 0;
+  font-size: 1rem;
+  color: #000000;
+  text-align: right;
+  font-weight: 600;
+}
+
+.performanceLabel {
+  margin: 0;
+  font-size: 1rem;
+  color: #000000;
+  text-align: right;
+  font-weight: 600;
+}
+
+.performanceInfo {
+  margin: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .stockCard {
   border: 1px solid #f2c49f;
   border-radius: 10px;
