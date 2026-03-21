@@ -1,6 +1,14 @@
 :root {
   color-scheme: light;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --color-brand-primary: #f97316;
+  --color-brand-hover: #ea580c;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-bg-page: #ffffff;
+  --color-bg-surface: #f9fafb;
+  --color-border: #e5e7eb;
+  --color-on-brand: #ffffff;
 }
 
 html,
@@ -9,7 +17,7 @@ body {
 }
 
 html {
-  background: linear-gradient(to bottom, #ff5f00 0, #ff5f00 35vh, #ffffff 65vh, #ffffff 100%);
+  background: var(--color-bg-page);
   overscroll-behavior-y: none;
 }
 
@@ -20,12 +28,13 @@ body {
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  color: #000000;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
 }
 
 main {
   flex: 1;
+  background: var(--color-bg-surface);
 }
 
 .container {
@@ -74,22 +83,22 @@ main.container.stocksWide {
 }
 
 .stocksTabs button.activeTab {
-  background: #d96a12;
-  color: #ffffff;
-  border-color: #d96a12;
+  background: var(--color-brand-hover);
+  color: var(--color-on-brand);
+  border-color: var(--color-brand-hover);
+  box-shadow: inset 0 0 0 1px var(--color-brand-hover), 0 1px 2px rgba(17, 24, 39, 0.18);
 }
 
 .siteHeader {
   border-bottom: none;
-  background: #ff5f00;
-  color: #ffffff;
+  background: var(--color-brand-primary);
+  color: var(--color-on-brand);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.12);
 }
 
 .siteHeader::after {
-  content: "";
-  display: block;
-  height: 120px;
-  background: linear-gradient(to bottom, #ff5f00 0%, #ffffff 100%);
+  content: none;
+  display: none;
 }
 
 .siteHeader .container {
@@ -105,8 +114,8 @@ main.container.stocksWide {
   grid-template-areas: "title nav auth";
   align-items: center;
   gap: 0.75rem;
-  padding-top: 1.15rem;
-  padding-bottom: 0.75rem;
+  padding-top: 0.65rem;
+  padding-bottom: 0.45rem;
 }
 
 .headerInner h1 {
@@ -118,6 +127,23 @@ main.container.stocksWide {
   grid-area: auth;
   justify-self: end;
   margin-right: 2rem;
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-on-brand);
+}
+
+#authActionBtn,
+#legalAuthBtn {
+  cursor: pointer;
+}
+
+#authActionBtn:hover:not(:disabled),
+#authActionBtn:focus-visible,
+#legalAuthBtn:hover:not(:disabled),
+#legalAuthBtn:focus-visible {
+  background: var(--color-bg-page);
+  border-color: var(--color-bg-page);
+  color: var(--color-brand-hover);
 }
 
 .pageNav {
@@ -137,6 +163,15 @@ main.container.stocksWide {
   justify-content: center;
   text-align: center;
   white-space: nowrap;
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-on-brand);
+}
+
+.pageNavBtn:hover:not(:disabled) {
+  background: var(--color-bg-page);
+  border-color: var(--color-bg-page);
+  color: var(--color-text-primary);
 }
 
 @media (max-width: 760px) {
@@ -166,20 +201,21 @@ main.container.stocksWide {
 .siteHeader h1 {
   margin: 0;
   font-size: 1.6rem;
-  color: #ffffff;
+  color: var(--color-on-brand);
 }
 
 .card {
-  background: #fffdf9;
-  border: 1px solid #f2c49f;
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1rem;
   margin-bottom: 1rem;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
 }
 
 .termsHero {
-  background: #cc3F00;
-  color: #ffffff;
+  background: var(--color-brand-primary);
+  color: var(--color-on-brand);
   border-radius: 12px;
   padding: 2rem 1.5rem;
   margin-bottom: 1rem;
@@ -187,21 +223,21 @@ main.container.stocksWide {
 
 .termsBackBtn {
   display: inline-block;
-  border: 1px solid #f4a460;
+  border: 1px solid var(--color-brand-primary);
   border-radius: 8px;
   padding: 0.75rem 1.2rem;
   font-size: 1.05rem;
   font-weight: 600;
-  background: #f7b777;
-  color: #5c2f0b;
+  background: var(--color-brand-primary);
+  color: var(--color-on-brand);
   text-decoration: none;
   margin-bottom: 1rem;
 }
 
 .termsBackBtn:hover {
-  background: #b8540a;
-  color: #ffffff;
-  border-color: #b8540a;
+  background: var(--color-brand-hover);
+  color: var(--color-on-brand);
+  border-color: var(--color-brand-hover);
 }
 
 main.container.termsWide {
@@ -214,7 +250,7 @@ main.container.termsWide {
 .termsHero h1 {
   margin: 0;
   font-size: 2.3rem;
-  color: #ffffff;
+  color: var(--color-on-brand);
 }
 
 .termsVersion {
@@ -223,13 +259,13 @@ main.container.termsWide {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #ffffff;
+  color: var(--color-on-brand);
 }
 
 .termsHero p {
   margin: 0.75rem 0 0;
   font-size: 1.05rem;
-  color: #ffffff;
+  color: var(--color-on-brand);
 }
 
 .termsUpdated {
@@ -266,8 +302,8 @@ main.container.termsWide {
   width: 2rem;
   height: 2rem;
   border-radius: 999px;
-  background: #ff5f00;
-  color: #ffffff;
+  background: var(--color-brand-primary);
+  color: var(--color-on-brand);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -299,48 +335,73 @@ label {
 }
 
 input {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.5rem 0.6rem;
   font: inherit;
-  background: #ffffff;
-  color: #1f2937;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
 }
 
 select {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.5rem 0.6rem;
   font: inherit;
-  background: #ffffff;
-  color: #1f2937;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
 }
 
 button {
-  border: 1px solid #f4a460;
+  border: 1px solid var(--color-brand-primary);
   border-radius: 8px;
   padding: 0.55rem 0.9rem;
   font: inherit;
   font-weight: 600;
-  background: #f7b777;
-  color: #5c2f0b;
+  background: var(--color-brand-primary);
+  color: var(--color-on-brand);
   cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 button.secondary {
-  background: #f7b777;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
 }
 
 button:hover:not(:disabled):not(.iconBtn) {
-  background: #b8540a;
-  color: #ffffff;
-  border-color: #b8540a;
+  background: var(--color-brand-hover);
+  color: var(--color-on-brand);
+  border-color: var(--color-brand-hover);
+}
+
+.pageNav .pageNavBtn {
+  background: transparent;
+  border-color: transparent;
+  color: var(--color-on-brand);
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.pageNav .pageNavBtn:hover:not(:disabled),
+.pageNav .pageNavBtn:focus-visible {
+  background: var(--color-bg-page);
+  border-color: var(--color-bg-page);
+  color: var(--color-text-primary);
 }
 
 .pageNavBtn.activePage {
-  background: #b8540a;
-  color: #ffffff;
-  border-color: #b8540a;
+  background: var(--color-brand-hover);
+  color: var(--color-on-brand);
+  border-color: var(--color-brand-hover);
+  box-shadow: inset 0 0 0 1px var(--color-brand-hover), 0 1px 2px rgba(17, 24, 39, 0.18);
+}
+
+button.secondary:hover:not(:disabled):not(.iconBtn) {
+  background: var(--color-bg-surface);
+  color: var(--color-brand-hover);
+  border-color: var(--color-brand-primary);
 }
 
 button:disabled {
@@ -373,16 +434,34 @@ button:disabled {
   gap: 0.5rem;
 }
 
+.stockCardHeaderLeft {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.stockCardRationale {
+  margin: 0;
+}
+
+.stockCardMetaLine {
+  margin: 0;
+}
+
 .actionBadge {
   padding: 0.6rem 1.2rem !important;
   font-size: 1.4rem !important;
   font-weight: 700 !important;
 }
 
+.actionBadge.buy,
+.actionBadge.sell {
+  font-size: 1.25rem !important;
+}
+
 .buyPriceInfo {
   margin: 0;
   font-size: 1rem;
-  color: #000000;
+  color: var(--color-text-primary);
   text-align: right;
   font-weight: 600;
 }
@@ -390,7 +469,7 @@ button:disabled {
 .performanceLabel {
   margin: 0;
   font-size: 1rem;
-  color: #000000;
+  color: var(--color-text-primary);
   text-align: right;
   font-weight: 600;
 }
@@ -402,10 +481,11 @@ button:disabled {
 }
 
 .stockCard {
-  border: 1px solid #f2c49f;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 0.8rem;
-  background: #ffffff;
+  background: var(--color-bg-surface);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
 .clickableCard {
@@ -413,7 +493,7 @@ button:disabled {
 }
 
 .clickableCard:hover {
-  border-color: #0b1f4d;
+  border-color: var(--color-brand-hover);
 }
 
 .pill {
@@ -460,7 +540,7 @@ button:disabled {
 }
 
 .muted {
-  color: #000000;
+  color: var(--color-text-secondary);
 }
 
 .hidden {
@@ -469,7 +549,7 @@ button:disabled {
 
 #message {
   min-height: 1.5rem;
-  color: #000000;
+  color: var(--color-text-primary);
 }
 
 .historyCanvas {
@@ -478,8 +558,8 @@ button:disabled {
   height: 320px;
   display: block;
   margin: 0 auto;
-  background: #ffffff;
-  border: 1px solid #f2c49f;
+  background: var(--color-bg-page);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
 }
 
@@ -490,12 +570,12 @@ button:disabled {
 .graphTooltip {
   position: absolute;
   pointer-events: none;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background: var(--color-bg-page);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.4rem 0.55rem;
   font-size: 0.8rem;
-  color: #1f2937;
+  color: var(--color-text-primary);
   white-space: nowrap;
   transform: translate(-50%, calc(-100% - 10px));
 }
@@ -507,11 +587,11 @@ button:disabled {
 
 .marketCountdown {
   margin-top: 0;
-  border: 1px solid #f2c49f;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 0.5rem;
   text-align: center;
-  background: #fffdf9;
+  background: var(--color-bg-surface);
 }
 
 .countdownValue {
@@ -533,7 +613,7 @@ button:disabled {
 .historyTable td {
   text-align: left;
   padding: 0.5rem;
-  border-bottom: 1px solid #f3e1d1;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .siteFooter {
@@ -542,13 +622,13 @@ button:disabled {
 }
 
 .siteFooter .footerPanel {
-  background: #ff5f00;
+  background: var(--color-brand-primary);
   border-radius: 14px;
   padding: 1rem 1.15rem;
   display: grid;
   gap: 1.25rem;
   grid-template-columns: 1.5fr 1fr 1fr;
-  color: #ffffff;
+  color: var(--color-on-brand);
   max-width: none;
   width: auto;
   margin-left: 0.5in;
@@ -557,7 +637,7 @@ button:disabled {
 
 .siteFooter h3 {
   margin: 0;
-  color: #ffffff;
+  color: var(--color-on-brand);
 }
 
 .footerColumn {
@@ -568,7 +648,7 @@ button:disabled {
 
 .footerBrand p {
   margin: 0;
-  color: #fff7f1;
+  color: var(--color-on-brand);
 }
 
 .footerMetaLine {
@@ -595,7 +675,7 @@ button:disabled {
 }
 
 .siteFooter a {
-  color: #ffffff;
+  color: var(--color-on-brand);
   text-decoration: none;
 }
 
@@ -605,7 +685,7 @@ button:disabled {
 
 .footerBottom {
   grid-column: 1 / -1;
-  background: #cc3F00;
+  background: var(--color-brand-hover);
   margin: 0 -1.15rem -1rem;
   padding: 0.85rem 1.15rem;
   border-bottom-left-radius: 14px;
@@ -619,12 +699,12 @@ button:disabled {
 }
 
 .footerCopyright {
-  color: #ffffff;
+  color: var(--color-on-brand);
   font-weight: 600;
 }
 
 .footerDisclaimer {
-  color: #fff1e5;
+  color: var(--color-on-brand);
   font-size: 0.78rem;
   line-height: 1.35;
   letter-spacing: 0.015em;
@@ -654,9 +734,10 @@ button:disabled {
 }
 
 .adminTabs button.activeTab {
-  background: #d96a12;
-  color: #ffffff;
-  border-color: #d96a12;
+  background: var(--color-brand-hover);
+  color: var(--color-on-brand);
+  border-color: var(--color-brand-hover);
+  box-shadow: inset 0 0 0 1px var(--color-brand-hover), 0 1px 2px rgba(17, 24, 39, 0.18);
 }
 
 .rangeStats {
@@ -703,15 +784,15 @@ button:disabled {
 }
 
 .calcPanel {
-  border: 1px solid #f2c49f;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--color-bg-surface);
   overflow: hidden;
 }
 
 .calcHeader {
-  background: #ff5f00;
-  color: #ffffff;
+  background: var(--color-brand-primary);
+  color: var(--color-on-brand);
   padding: 0.7rem 0.8rem;
   min-height: 74px;
   box-sizing: border-box;
@@ -740,7 +821,7 @@ button:disabled {
 
 .calcHeader p {
   margin-top: 0.2rem;
-  color: #fff3ea;
+  color: var(--color-on-brand);
 }
 
 .calcBody {
@@ -772,14 +853,14 @@ button:disabled {
 
 .calcActionBtn {
   margin-top: 0.25rem;
-  background: #15803d;
-  border-color: #15803d;
-  color: #ffffff;
+  background: var(--color-brand-primary);
+  border-color: var(--color-brand-primary);
+  color: var(--color-on-brand);
 }
 
 .calcActionBtn:hover:not(:disabled) {
-  background: #166534;
-  border-color: #166534;
+  background: var(--color-brand-hover);
+  border-color: var(--color-brand-hover);
 }
 
 #investmentResult {
@@ -788,10 +869,10 @@ button:disabled {
 
 .investmentOutcomeBox {
   margin-top: 0.35rem;
-  border: 1px solid #f2c49f;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 0.55rem 0.65rem;
-  background: #fff8f1;
+  background: var(--color-bg-surface);
 }
 
 .investmentOutcomeBox p {
@@ -822,7 +903,7 @@ button:disabled {
   margin: 0.7rem 0 0.2rem;
   font-size: 1.12rem;
   font-weight: 800;
-  color: #9a3d00;
+  color: var(--color-text-primary);
 }
 
 .calcSteps {
@@ -844,8 +925,8 @@ button:disabled {
   width: 1.35rem;
   height: 1.35rem;
   border-radius: 999px;
-  background: #ff5f00;
-  color: #ffffff;
+  background: var(--color-brand-primary);
+  color: var(--color-on-brand);
   font-size: 0.8rem;
   font-weight: 700;
   display: flex;
@@ -856,7 +937,7 @@ button:disabled {
 .calcStepTitle {
   margin: 0;
   font-weight: 700;
-  color: #9a3d00;
+  color: var(--color-text-primary);
 }
 
 .calcInfoBody ul {
@@ -888,7 +969,7 @@ button:disabled {
   margin: 0.7rem 0 0.2rem;
   font-size: 1.12rem;
   font-weight: 800;
-  color: #9a3d00;
+  color: var(--color-text-primary);
 }
 
 .calcDetailBody {
@@ -946,8 +1027,20 @@ button:disabled {
 }
 
 #stockDetailRationale {
-  margin: 0.4rem 0 0;
-  color: #1f2937;
+  margin: 0.2rem 0 0;
+  color: var(--color-text-primary);
+}
+
+#stockDetailTitle {
+  margin: 0;
+}
+
+#stockDetailMeta {
+  margin: 0.15rem 0 0;
+}
+
+#stockDetailMeta:empty {
+  display: none;
 }
 
 .passwordToggle {
@@ -976,7 +1069,7 @@ button:disabled {
   left: 0.7rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #000000;
+  color: var(--color-text-primary);
   pointer-events: none;
 }
 
@@ -997,7 +1090,7 @@ button:disabled {
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: #000000;
+  color: var(--color-text-primary);
   padding: 0.2rem;
   min-width: auto;
   line-height: 1;
@@ -1038,25 +1131,25 @@ button:disabled {
 }
 
 .registerTerms {
-  border: 1px solid #f2c49f;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   padding: 0.7rem;
-  background: #fff8f1;
+  background: var(--color-bg-surface);
   text-align: left;
 }
 
 .registerTermsVersion {
   margin: 0 0 0.4rem;
   font-weight: 700;
-  color: #5c2f0b;
+  color: var(--color-text-primary);
 }
 
 .registerTermsFrame {
   width: 100%;
   height: 260px;
-  border: 1px solid #f2c49f;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--color-bg-page);
 }
 
 .termsAgreeRow {
@@ -1065,14 +1158,14 @@ button:disabled {
   align-items: flex-start;
   gap: 0.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--color-text-primary);
   text-align: left;
 }
 
 .termsAgreeRow input {
   margin-top: 0.2rem;
   width: auto;
-  accent-color: #cc3f00;
+  accent-color: var(--color-brand-primary);
 }
 
 .termsAcceptanceActions {
@@ -1084,8 +1177,8 @@ body.termsEmbedBody {
   margin: 0;
   min-height: auto;
   display: block;
-  background: #ffffff;
-  color: #000000;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
 }
 
 .termsEmbedMain {
@@ -1094,7 +1187,7 @@ body.termsEmbedBody {
 
 .termsEmbedMeta {
   margin: 0 0 0.7rem;
-  color: #5c2f0b;
+  color: var(--color-text-secondary);
   font-weight: 700;
 }
 

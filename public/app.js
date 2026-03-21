@@ -170,7 +170,7 @@ function getInitialPageFromUrl() {
 }
 
 function setMessage(text, isError = true) {
-  message.style.color = "#000000";
+  message.style.color = "var(--color-text-primary)";
   message.textContent = text;
 }
 
@@ -1035,8 +1035,14 @@ function renderStockCards(targetList, stocks, emptyMessage) {
 
     card.innerHTML = `
       <div class="headerRow">
-        <div>
+        <div class="stockCardHeaderLeft">
           <strong>${stock.ticker} — ${stock.company}</strong>
+          <p class="stockCardRationale">${stock.rationale}</p>
+          <p class="muted stockCardMetaLine">Sector: ${normalizeSectorName(stock.sector)} • Close: ${
+            typeof stock.latestClose === "number" ? formatPrice(stock.latestClose) : "Unavailable"
+          }</p>
+          ${rangeText ? `<p class="muted stockCardMetaLine">${rangeText}</p>` : ""}
+          <p class="muted stockCardMetaLine">Updated: ${new Date(stock.updatedAt).toLocaleDateString()}</p>
         </div>
         <div class="stockCardRightPanel">
           <span class="pill ${actionClass} actionBadge">${stock.action}</span>
@@ -1045,12 +1051,6 @@ function renderStockCards(targetList, stocks, emptyMessage) {
           <p class="performanceInfo"><span class="pill changePill ${percentClass}">${percentText}</span></p>
         </div>
       </div>
-      <p>${stock.rationale}</p>
-      <p class="muted">Sector: ${normalizeSectorName(stock.sector)} • Close: ${
-        typeof stock.latestClose === "number" ? formatPrice(stock.latestClose) : "Unavailable"
-      }</p>
-      ${rangeText ? `<p class="muted">${rangeText}</p>` : ""}
-      <p class="muted">Updated: ${new Date(stock.updatedAt).toLocaleDateString()}</p>
     `;
     card.addEventListener("click", () => openStockDetails(stock.ticker, stock.company, stock.rationale));
     targetList.appendChild(card);
