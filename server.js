@@ -46,7 +46,7 @@ const DEFAULT_ADMIN = {
 };
 
 const LEGACY_DEFAULT_ADMIN_EMAILS = ["brodyholm73@gmail.com"];
-const TERMS_VERSION = "1.1";
+const CURRENT_TERMS_VERSION = "1.2";
 
 const DEFAULT_RECOMMENDATIONS = [
   {
@@ -322,6 +322,111 @@ async function fetchChangePercentSinceDate(ticker, sinceDateText) {
   }
 }
 
+async function fetchTickerHistoryMax(ticker) {
+  try {
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+        ticker
+      )}?range=max&interval=1d`
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const result = data?.chart?.result?.[0];
+    const timestamps = result?.timestamp || [];
+    const closes = result?.indicators?.quote?.[0]?.close || [];
+    const currency = result?.meta?.currency || "USD";
+    const company = result?.meta?.shortName || ticker;
+
+    const history = [];
+    for (let index = 0; index < timestamps.length; index += 1) {
+      const close = closes[index];
+      if (typeof close !== "number" || Number.isNaN(close)) {
+        continue;
+      }
+
+      const dateMs = timestamps[index] * 1000;
+      history.push({
+        dateMs,
+        date: new Date(dateMs).toISOString(),
+        close,
+      });
+    }
+
+    if (!history.length) {
+      return null;
+    }
+
+    return {
+      ticker,
+      company,
+      currency,
+      history,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTickerHistoryRange(ticker, startDateMs, endDateMs) {
+  if (!Number.isFinite(startDateMs) || !Number.isFinite(endDateMs) || endDateMs < startDateMs) {
+    return null;
+  }
+
+  const period1 = Math.floor(startDateMs / 1000);
+  const period2 = Math.floor(endDateMs / 1000);
+
+  try {
+    const response = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+        ticker
+      )}?period1=${period1}&period2=${period2}&interval=1d&includePrePost=false&events=history`
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const result = data?.chart?.result?.[0];
+    const timestamps = result?.timestamp || [];
+    const closes = result?.indicators?.quote?.[0]?.close || [];
+    const currency = result?.meta?.currency || "USD";
+    const company = result?.meta?.shortName || ticker;
+
+    const history = [];
+    for (let index = 0; index < timestamps.length; index += 1) {
+      const close = closes[index];
+      if (typeof close !== "number" || Number.isNaN(close)) {
+        continue;
+      }
+
+      const dateMs = timestamps[index] * 1000;
+      history.push({
+        dateMs,
+        date: new Date(dateMs).toISOString(),
+        close,
+      });
+    }
+
+    if (!history.length) {
+      return null;
+    }
+
+    return {
+      ticker,
+      company,
+      currency,
+      history,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function enrichRecommendationSectors(stocks) {
   const result = await Promise.all(
     stocks.map(async (stock) => {
@@ -394,7 +499,7 @@ function requireAuth(req, res, next) {
 function hasAcceptedCurrentTerms(user) {
   const acceptedAt = String(user?.terms_accepted_at || "").trim();
   const acceptedVersion = String(user?.terms_version_accepted || "").trim();
-  return Boolean(acceptedAt) && acceptedVersion === TERMS_VERSION;
+  return Boolean(acceptedAt) && acceptedVersion === CURRENT_TERMS_VERSION;
 }
 
 async function getUserById(userId) {
@@ -461,7 +566,7 @@ async function requireAcceptedTerms(req, res, next) {
     return res.status(403).json({
       error: "Please accept the latest Terms and Conditions to continue.",
       requireTermsAcceptance: true,
-      termsVersion: TERMS_VERSION,
+      termsVersion: CURRENT_TERMS_VERSION,
     });
   }
 
@@ -502,7 +607,7 @@ async function requireAdmin(req, res, next) {
     return res.status(403).json({
       error: "Please accept the latest Terms and Conditions to continue.",
       requireTermsAcceptance: true,
-      termsVersion: TERMS_VERSION,
+      termsVersion: CURRENT_TERMS_VERSION,
     });
   }
 
@@ -599,10 +704,10 @@ app.post("/api/auth/register", async (req, res) => {
       .json({ error: "Name, valid email, and password (8+ chars) are required." });
   }
 
-  if (!termsAccepted || termsVersion !== TERMS_VERSION) {
+  if (!termsAccepted || termsVersion !== CURRENT_TERMS_VERSION) {
     return res
       .status(400)
-      .json({ error: `You must agree to Terms and Conditions version ${TERMS_VERSION}.` });
+      .json({ error: `You must agree to Terms and Conditions version ${CURRENT_TERMS_VERSION}.` });
   }
 
   try {
@@ -615,7 +720,7 @@ app.post("/api/auth/register", async (req, res) => {
         email,
         password_hash: passwordHash,
         terms_accepted_at: termsAcceptedAt,
-        terms_version_accepted: TERMS_VERSION,
+        terms_version_accepted: CURRENT_TERMS_VERSION,
       })
       .select("id, name, email")
       .single();
@@ -650,7 +755,7 @@ app.post("/api/auth/register", async (req, res) => {
             email: req.session.email,
             alreadyExists: true,
             mustAcceptTerms: !hasAcceptedCurrentTerms(existingUserWithTerms),
-            termsVersionRequired: TERMS_VERSION,
+            termsVersionRequired: CURRENT_TERMS_VERSION,
           });
         }
       }
@@ -688,7 +793,7 @@ app.post("/api/auth/login", async (req, res) => {
         name: req.session.name,
         email: req.session.email,
         mustAcceptTerms: !hasAcceptedCurrentTerms(adminUser),
-        termsVersionRequired: TERMS_VERSION,
+        termsVersionRequired: CURRENT_TERMS_VERSION,
       });
     }
   }
@@ -716,7 +821,7 @@ app.post("/api/auth/login", async (req, res) => {
     name: req.session.name,
     email: req.session.email,
     mustAcceptTerms: !hasAcceptedCurrentTerms(user),
-    termsVersionRequired: TERMS_VERSION,
+    termsVersionRequired: CURRENT_TERMS_VERSION,
   });
 });
 
@@ -747,7 +852,8 @@ app.get("/api/auth/me", async (req, res) => {
     email: user.email || req.session.email,
     isAdmin: isAdminEmail(user.email || req.session.email),
     mustAcceptTerms: !hasAcceptedCurrentTerms(user),
-    termsVersionRequired: TERMS_VERSION,
+    termsVersionRequired: CURRENT_TERMS_VERSION,
+    termsVersionAccepted: user.terms_version_accepted,
   });
 });
 
@@ -759,9 +865,9 @@ app.post("/api/auth/accept-terms", requireAuth, async (req, res) => {
   const termsAccepted = Boolean(req.body.termsAccepted);
   const termsVersion = String(req.body.termsVersion || "").trim();
 
-  if (!termsAccepted || termsVersion !== TERMS_VERSION) {
+  if (!termsAccepted || termsVersion !== CURRENT_TERMS_VERSION) {
     return res.status(400).json({
-      error: `You must accept Terms and Conditions version ${TERMS_VERSION}.`,
+      error: `You must accept Terms and Conditions version ${CURRENT_TERMS_VERSION}.`,
     });
   }
 
@@ -770,7 +876,7 @@ app.post("/api/auth/accept-terms", requireAuth, async (req, res) => {
     .from("users")
     .update({
       terms_accepted_at: termsAcceptedAt,
-      terms_version_accepted: TERMS_VERSION,
+      terms_version_accepted: CURRENT_TERMS_VERSION,
     })
     .eq("id", req.session.userId)
     .select("id")
@@ -785,7 +891,7 @@ app.post("/api/auth/accept-terms", requireAuth, async (req, res) => {
     return res.status(404).json({ error: "User not found." });
   }
 
-  return res.json({ ok: true, termsAcceptedAt, termsVersionAccepted: TERMS_VERSION });
+  return res.json({ ok: true, termsAcceptedAt, termsVersionAccepted: CURRENT_TERMS_VERSION });
 });
 
 app.get("/api/recommendations", requireAuth, requireAcceptedTerms, async (req, res) => {
@@ -1056,6 +1162,200 @@ app.delete("/api/admin/recommendations/:id", requireAdmin, async (req, res) => {
   }
 
   return res.json({ ok: true });
+});
+
+app.get("/api/home/best-performing-insight", async (req, res) => {
+  const { data: rows, error } = await supabaseAdmin
+    .from("recommendations")
+    .select("id, ticker, company, action, rationale, entry_price, locked_change_percent, updated_at")
+    .in("action", ["BUY", "SELL"])
+    .not("entry_price", "is", null);
+
+  if (error) {
+    return res.status(500).json({ error: "Failed to load stock insights." });
+  }
+
+  const candidates = (rows || []).filter((row) => {
+    return (
+      typeof row.entry_price === "number" &&
+      Number.isFinite(row.entry_price) &&
+      row.entry_price > 0 &&
+      /^[A-Z.\-]{1,10}$/.test(String(row.ticker || "").trim().toUpperCase())
+    );
+  });
+
+  if (!candidates.length) {
+    return res.status(404).json({ error: "No stock insights available yet." });
+  }
+
+  const evaluated = await Promise.all(
+    candidates.map(async (row) => {
+      const ticker = String(row.ticker || "").trim().toUpperCase();
+      const action = String(row.action || "").trim().toUpperCase();
+      const buyPrice = row.entry_price;
+      const historyData = await fetchTickerHistoryMax(ticker);
+      if (!historyData) {
+        return null;
+      }
+
+      const allHistory = historyData.history;
+      if (buyPrice <= 0) {
+        return null;
+      }
+
+      const recommendationDateMs = new Date(String(row.updated_at || "")).getTime();
+      let buyPoint = null;
+
+      let performancePercent = null;
+      let sellPrice = null;
+      let currentPrice = null;
+      let recommendedBias = "BUY";
+      let sellDate = null;
+      let endDateMs = Date.now();
+
+      if (action === "SELL") {
+        recommendedBias = "SOLD";
+        const sellDateMsRaw = new Date(String(row.updated_at || "")).getTime();
+        if (!Number.isFinite(sellDateMsRaw)) {
+          return null;
+        }
+
+        const sellPoint = [...allHistory].reverse().find((point) => point.dateMs <= sellDateMsRaw);
+
+        if (!sellPoint) {
+          return null;
+        }
+
+        const buyCandidates = allHistory.filter((point) => point.dateMs <= sellPoint.dateMs);
+        if (buyCandidates.length) {
+          buyPoint = buyCandidates.reduce((closest, point) => {
+            if (!closest) {
+              return point;
+            }
+
+            const currentDistance = Math.abs(point.close - buyPrice);
+            const closestDistance = Math.abs(closest.close - buyPrice);
+            if (currentDistance < closestDistance) {
+              return point;
+            }
+
+            if (currentDistance === closestDistance && point.dateMs > closest.dateMs) {
+              return point;
+            }
+
+            return closest;
+          }, null);
+        }
+
+        if (!buyPoint) {
+          return null;
+        }
+
+        endDateMs = sellPoint.dateMs;
+        sellDate = new Date(sellPoint.dateMs).toISOString();
+
+        if (typeof row.locked_change_percent === "number" && Number.isFinite(row.locked_change_percent)) {
+          performancePercent = row.locked_change_percent;
+          sellPrice = buyPrice * (1 + performancePercent / 100);
+        } else {
+          performancePercent = ((sellPoint.close - buyPrice) / buyPrice) * 100;
+          sellPrice = sellPoint.close;
+        }
+      } else {
+        if (Number.isFinite(recommendationDateMs)) {
+          buyPoint = allHistory.find((point) => point.dateMs >= recommendationDateMs);
+        }
+
+        if (!buyPoint) {
+          const buyCandidates = allHistory.filter((point) => point.dateMs <= endDateMs);
+          if (!buyCandidates.length) {
+            return null;
+          }
+
+          buyPoint = buyCandidates.reduce((closest, point) => {
+            if (!closest) {
+              return point;
+            }
+
+            const currentDistance = Math.abs(point.close - buyPrice);
+            const closestDistance = Math.abs(closest.close - buyPrice);
+            if (currentDistance < closestDistance) {
+              return point;
+            }
+
+            if (currentDistance === closestDistance && point.dateMs > closest.dateMs) {
+              return point;
+            }
+
+            return closest;
+          }, null);
+        }
+
+        if (!buyPoint) {
+          return null;
+        }
+
+        const currentPoint = [...allHistory].reverse().find((point) => point.dateMs <= endDateMs);
+        if (!currentPoint) {
+          return null;
+        }
+
+        currentPrice = currentPoint.close;
+        performancePercent = ((currentPrice - buyPrice) / buyPrice) * 100;
+      }
+
+      if (!Number.isFinite(performancePercent)) {
+        return null;
+      }
+
+      const rangedHistoryData = await fetchTickerHistoryRange(ticker, buyPoint.dateMs, endDateMs);
+      const chartSource = rangedHistoryData?.history?.length
+        ? rangedHistoryData.history
+        : allHistory;
+
+      const chart = chartSource
+        .filter((point) => point.dateMs >= buyPoint.dateMs && point.dateMs <= endDateMs)
+        .map((point) => ({
+          date: point.date,
+          close: point.close,
+        }));
+
+      if (chart.length < 2) {
+        return null;
+      }
+
+      return {
+        id: row.id,
+        ticker,
+        company: row.company || historyData.company || ticker,
+        rationale: String(row.rationale || "").trim(),
+        recommendedBias,
+        performancePercent,
+        buyPrice,
+        sellPrice,
+        currentPrice,
+        buyDate: new Date(buyPoint.dateMs).toISOString(),
+        sellDate,
+        currency: historyData.currency,
+        chart,
+      };
+    })
+  );
+
+  const valid = evaluated.filter(Boolean);
+  if (!valid.length) {
+    return res.status(404).json({ error: "No stock insights with valid market data were found." });
+  }
+
+  valid.sort((left, right) => right.performancePercent - left.performancePercent);
+  const best = valid[0];
+
+  return res.json({
+    best_performing_stock_insight: {
+      ...best,
+      performanceLabel: `${best.performancePercent >= 0 ? "+" : ""}${best.performancePercent.toFixed(1)}% since recommendation`,
+    },
+  });
 });
 
 app.get("/api/stocks/:ticker/history", requireAuth, requireAcceptedTerms, async (req, res) => {

@@ -6,6 +6,7 @@ const stocksPage = document.getElementById("stocksPage");
 const stockDetailPage = document.getElementById("stockDetailPage");
 const adminPage = document.getElementById("adminPage");
 const marketCountdown = document.getElementById("marketCountdown");
+const marketStatusBar = document.getElementById("marketStatusBar");
 const authPanel = document.getElementById("authPanel");
 const termsAcceptancePage = document.getElementById("termsAcceptancePage");
 const homeNavBtn = document.getElementById("homeNavBtn");
@@ -99,6 +100,15 @@ const adminUsersList = document.getElementById("adminUsersList");
 const footerPageLinks = document.querySelectorAll("[data-footer-page]");
 const message = document.getElementById("message");
 const mainContainer = document.querySelector("main.container");
+const homeTopInsightName = document.getElementById("homeTopInsightName");
+const homeTopInsightRangeLabel = document.getElementById("homeTopInsightRangeLabel");
+const homeTopInsightBadge = document.getElementById("homeTopInsightBadge");
+const homeTopInsightChart = document.getElementById("homeTopInsightChart");
+const homeTopInsightMeta = document.getElementById("homeTopInsightMeta");
+const homeTopInsightRationale = document.getElementById("homeTopInsightRationale");
+const homeTopInsightCta = document.getElementById("homeTopInsightCta");
+const homeFinalPrimaryBtn = document.getElementById("homeFinalPrimaryBtn");
+const homeFinalSecondaryBtn = document.getElementById("homeFinalSecondaryBtn");
 
 let currentUser = null;
 let currentStock = null;
@@ -109,8 +119,10 @@ let graphPoints = [];
 let graphArea = null;
 let allRecommendations = [];
 let stocksTabView = "current";
+let homeTopInsight = null;
+let messageAutoHideTimer = null;
 
-const TERMS_VERSION = "1.1";
+const CURRENT_TERMS_VERSION = "1.2";
 
 const SECTOR_OPTIONS = [
   "Communication Services",
@@ -169,9 +181,31 @@ function getInitialPageFromUrl() {
   return allowedPages.has(page) ? page : "home";
 }
 
-function setMessage(text, isError = true) {
-  message.style.color = "var(--color-text-primary)";
-  message.textContent = text;
+function setMessage(text, isError = true, options = {}) {
+  if (messageAutoHideTimer) {
+    clearTimeout(messageAutoHideTimer);
+    messageAutoHideTimer = null;
+  }
+
+  const normalizedText = String(text || "").trim();
+
+  if (!normalizedText) {
+    message.textContent = "";
+    message.classList.remove("visible", "messageSuccess", "messageError");
+    message.classList.add("hidden");
+    return;
+  }
+
+  message.textContent = normalizedText;
+  message.classList.remove("hidden", "messageSuccess", "messageError");
+  message.classList.add("visible", isError ? "messageError" : "messageSuccess");
+
+  const autoHideMs = Number(options.autoHideMs || 0);
+  if (autoHideMs > 0) {
+    messageAutoHideTimer = setTimeout(() => {
+      setMessage("", false);
+    }, autoHideMs);
+  }
 }
 
 function toMidnightTime(value) {
@@ -228,8 +262,13 @@ function showPage(page) {
   authPanel.classList.toggle("hidden", page !== "auth");
   termsAcceptancePage.classList.toggle("hidden", page !== "termsAcceptance");
   marketCountdown.classList.toggle("hidden", page !== "home");
+  if (marketStatusBar) {
+    marketStatusBar.classList.toggle("hidden", page !== "home");
+  }
   mainContainer.classList.toggle("authWide", page === "auth");
   mainContainer.classList.toggle("stocksWide", page === "stocks" || page === "stockDetail");
+  mainContainer.classList.toggle("homeLandingActive", page === "home");
+  mainContainer.classList.toggle("investingLandingActive", page === "whatIsInvesting");
 
   const onStocksPage = page === "stocks" || page === "stockDetail";
   const navButtons = [
@@ -267,6 +306,20 @@ function showPage(page) {
   }
 }
 
+function isAuthenticatedUserSession() {
+  return Boolean(currentUser && currentUser.email);
+}
+
+function updateHomeFinalCtaUi() {
+  if (!homeFinalPrimaryBtn || !homeFinalSecondaryBtn) {
+    return;
+  }
+
+  const isAuthenticated = isAuthenticatedUserSession();
+  homeFinalPrimaryBtn.textContent = "View Stock Insights";
+  homeFinalSecondaryBtn.classList.toggle("hidden", isAuthenticated);
+}
+
 function setLoggedInUi(user) {
   currentUser = user;
   authActionBtn.textContent = "Sign Out";
@@ -274,6 +327,7 @@ function setLoggedInUi(user) {
   setStocksTab(stocksTabView);
   stocksLockedMessage.classList.add("hidden");
   adminNavBtn.classList.toggle("hidden", !user.isAdmin || Boolean(user.mustAcceptTerms));
+  updateHomeFinalCtaUi();
 }
 
 function setAuthMode(mode) {
@@ -339,6 +393,7 @@ function setLoggedOutUi() {
   passwordVisibilityBtn.setAttribute("aria-label", "Show password");
   setAuthMode("login");
   setAdminTab("stocks");
+  updateHomeFinalCtaUi();
   showPage("home");
 }
 
@@ -377,6 +432,16 @@ function formatPrice(value) {
 }
 
 function formatCountdown(totalSeconds) {
+  const dayInSeconds = 24 * 3600;
+  if (totalSeconds >= dayInSeconds) {
+    const days = Math.floor(totalSeconds / dayInSeconds);
+    const remainingAfterDays = totalSeconds % dayInSeconds;
+    const hours = Math.floor(remainingAfterDays / 3600);
+    const minutes = Math.floor((remainingAfterDays % 3600) / 60);
+    const seconds = remainingAfterDays % 60;
+    return `${days}d ${String(hours).padStart(2, "0")}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
+  }
+
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
@@ -423,11 +488,11 @@ function startMarketCountdown() {
     const { isMarketOpen, secondsUntilOpen, targetEt } = getNextMarketOpen();
     
     if (isMarketOpen) {
-      marketCountdownValue.textContent = "Market is Open";
-      marketCountdownMeta.textContent = "";
+      marketCountdownValue.textContent = "Open";
+      marketCountdownMeta.textContent = "| NYSE regular trading session is active";
     } else {
-      marketCountdownValue.textContent = formatCountdown(secondsUntilOpen);
-      marketCountdownMeta.textContent = `Next Open: ${targetEt.toLocaleString("en-US", {
+      marketCountdownValue.textContent = `Closed | Opens in ${formatCountdown(secondsUntilOpen)}`;
+      marketCountdownMeta.textContent = `| Next Open: ${targetEt.toLocaleString("en-US", {
         weekday: "short",
         month: "short",
         day: "numeric",
@@ -453,6 +518,200 @@ function formatHistoryAxisDate(date) {
 function formatPercent(value) {
   const sign = value >= 0 ? "+" : "";
   return `${sign}${value.toFixed(2)}%`;
+}
+
+function formatHomeInsightDate(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) {
+    return "--";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function truncateText(value, maxLength) {
+  const text = String(value || "").trim();
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function renderHomeTopInsightChart(chartPoints) {
+  if (!homeTopInsightChart) {
+    return;
+  }
+
+  const currencyFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  });
+
+  const points = (Array.isArray(chartPoints) ? chartPoints : [])
+    .map((point) => {
+      const close = Number(point?.close);
+      const dateMs = new Date(String(point?.date || "")).getTime();
+      if (!Number.isFinite(close) || !Number.isFinite(dateMs)) {
+        return null;
+      }
+
+      return {
+        close,
+        dateMs,
+      };
+    })
+    .filter(Boolean);
+
+  if (points.length < 2) {
+    homeTopInsightChart.innerHTML = '<text x="260" y="140" text-anchor="middle" class="homeTopInsightChartLabel">No chart data available</text>';
+    return;
+  }
+
+  const closes = points.map((point) => point.close);
+
+  const minClose = Math.min(...closes);
+  const maxClose = Math.max(...closes);
+  const padding = (maxClose - minClose || maxClose || 1) * 0.08;
+  const yMin = minClose - padding;
+  const yMax = maxClose + padding;
+  const span = yMax - yMin || 1;
+
+  const width = 520;
+  const height = 280;
+  const left = 62;
+  const right = width - 14;
+  const top = 14;
+  const bottom = height - 44;
+
+  const pointCoordinates = points.map((point, index) => {
+    const x = left + (index / Math.max(points.length - 1, 1)) * (right - left);
+    const y = bottom - ((point.close - yMin) / span) * (bottom - top);
+    return { x, y, dateMs: point.dateMs, close: point.close };
+  });
+
+  const linePoints = pointCoordinates.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`);
+
+  const yTickValues = [yMax, yMin + (span * 2) / 3, yMin + span / 3, yMin];
+  const yTicks = yTickValues.map((value) => {
+    const y = bottom - ((value - yMin) / span) * (bottom - top);
+    return {
+      y,
+      label: currencyFormatter.format(value),
+    };
+  });
+
+  const formatAxisDate = (dateMs) => {
+    return new Date(dateMs).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const xTickIndexes = [
+    0,
+    Math.floor((pointCoordinates.length - 1) / 3),
+    Math.floor((pointCoordinates.length - 1) * 2 / 3),
+    pointCoordinates.length - 1,
+  ];
+  const xTicks = xTickIndexes.map((index) => {
+    const point = pointCoordinates[index];
+    return {
+      x: point.x,
+      label: formatAxisDate(point.dateMs),
+    };
+  });
+
+  homeTopInsightChart.innerHTML = `
+    ${yTicks
+      .map(
+        (tick) => `
+      <line x1="${left}" y1="${tick.y.toFixed(2)}" x2="${right}" y2="${tick.y.toFixed(2)}" class="homeTopInsightGrid"></line>
+      <text x="${left - 8}" y="${(tick.y + 3.5).toFixed(2)}" text-anchor="end" class="homeTopInsightTick">${tick.label}</text>
+    `
+      )
+      .join("")}
+
+    <line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="homeTopInsightAxis"></line>
+    <line x1="${left}" y1="${top}" x2="${left}" y2="${bottom}" class="homeTopInsightAxis"></line>
+    <polyline fill="none" class="homeTopInsightLine" points="${linePoints.join(" ")}"></polyline>
+
+    ${xTicks
+      .map(
+        (tick) => `
+      <line x1="${tick.x.toFixed(2)}" y1="${bottom}" x2="${tick.x.toFixed(2)}" y2="${(bottom + 4).toFixed(2)}" class="homeTopInsightAxis"></line>
+      <text x="${tick.x.toFixed(2)}" y="${(bottom + 16).toFixed(2)}" text-anchor="middle" class="homeTopInsightTick">${tick.label}</text>
+    `
+      )
+      .join("")}
+
+    <text x="${((left + right) / 2).toFixed(2)}" y="${(height - 8).toFixed(2)}" text-anchor="middle" class="homeTopInsightAxisLabel">Date</text>
+    <text x="16" y="${((top + bottom) / 2).toFixed(2)}" text-anchor="middle" transform="rotate(-90 16 ${((top + bottom) / 2).toFixed(2)})" class="homeTopInsightAxisLabel">Price (USD)</text>
+  `;
+}
+
+function renderHomeTopInsight(insight) {
+  if (!homeTopInsightName || !homeTopInsightRangeLabel || !homeTopInsightBadge || !homeTopInsightMeta || !homeTopInsightRationale || !homeTopInsightCta) {
+    return;
+  }
+
+  homeTopInsight = insight || null;
+
+  if (!insight) {
+    homeTopInsightName.textContent = "Top performer will appear once insights are available.";
+    homeTopInsightRangeLabel.textContent = "";
+    homeTopInsightBadge.classList.add("hidden");
+    homeTopInsightMeta.innerHTML = '<p class="muted">No insight performance data is available yet.</p>';
+    homeTopInsightRationale.textContent = "";
+    homeTopInsightCta.disabled = true;
+    renderHomeTopInsightChart([]);
+    return;
+  }
+
+  const performancePercent = Number(insight.performancePercent || 0);
+  const performanceText = `${performancePercent >= 0 ? "+" : ""}${performancePercent.toFixed(1)}% since recommendation`;
+  homeTopInsightName.textContent = `${insight.ticker} — ${insight.company}`;
+  homeTopInsightBadge.textContent = performanceText;
+  homeTopInsightBadge.classList.remove("hidden", "negative", "positive");
+  homeTopInsightBadge.classList.add(performancePercent >= 0 ? "positive" : "negative");
+
+  const buyPriceText = typeof insight.buyPrice === "number" ? formatPrice(insight.buyPrice) : "--";
+  const sellPriceText = typeof insight.sellPrice === "number" ? formatPrice(insight.sellPrice) : "--";
+  const currentPriceText = typeof insight.currentPrice === "number" ? formatPrice(insight.currentPrice) : "--";
+  const buyDateText = formatHomeInsightDate(insight.buyDate);
+  const sellDateText = formatHomeInsightDate(insight.sellDate);
+  homeTopInsightRangeLabel.textContent =
+    insight.recommendedBias === "SOLD"
+      ? "Performance from buy date to sell date"
+      : "Performance since buy date";
+
+  homeTopInsightMeta.innerHTML = `
+    <p><strong>Recommended Bias:</strong> ${insight.recommendedBias}</p>
+    <p><strong>Buy Price:</strong> ${buyPriceText}</p>
+    ${insight.recommendedBias === "SOLD"
+      ? `<p><strong>Sell Price:</strong> ${sellPriceText}</p>`
+      : `<p><strong>Current Price:</strong> ${currentPriceText}</p>`}
+    <p><strong>Buy Date:</strong> ${buyDateText}</p>
+    ${insight.recommendedBias === "SOLD" ? `<p><strong>Sell Date:</strong> ${sellDateText}</p>` : ""}
+  `;
+
+  homeTopInsightRationale.textContent = truncateText(insight.rationale, 220);
+  homeTopInsightCta.disabled = false;
+  renderHomeTopInsightChart(insight.chart);
+}
+
+async function loadHomeTopInsight() {
+  try {
+    const result = await api("/api/home/best-performing-insight");
+    renderHomeTopInsight(result.best_performing_stock_insight || null);
+  } catch {
+    renderHomeTopInsight(null);
+  }
 }
 
 function renderHistoryGraph(history) {
@@ -492,7 +751,18 @@ function renderHistoryGraph(history) {
   const graphWidth = width - leftPadding - rightPadding;
   const graphHeight = height - topPadding - bottomPadding;
 
-  context.strokeStyle = "#334059";
+  const horizontalGridLines = 4;
+  context.strokeStyle = "#e5e7eb";
+  context.lineWidth = 1;
+  for (let gridIndex = 0; gridIndex <= horizontalGridLines; gridIndex += 1) {
+    const y = topPadding + (gridIndex / horizontalGridLines) * graphHeight;
+    context.beginPath();
+    context.moveTo(leftPadding, y);
+    context.lineTo(width - rightPadding, y);
+    context.stroke();
+  }
+
+  context.strokeStyle = "#d1d5db";
   context.lineWidth = 1;
   context.beginPath();
   context.moveTo(leftPadding, topPadding);
@@ -500,8 +770,8 @@ function renderHistoryGraph(history) {
   context.lineTo(width - rightPadding, height - bottomPadding);
   context.stroke();
 
-  context.strokeStyle = "#1d4ed8";
-  context.lineWidth = 2.5;
+  context.strokeStyle = "#f97316";
+  context.lineWidth = 2;
   context.beginPath();
   history.forEach((point, index) => {
     const x = leftPadding + (index / Math.max(history.length - 1, 1)) * graphWidth;
@@ -521,7 +791,7 @@ function renderHistoryGraph(history) {
   });
   context.stroke();
 
-  context.fillStyle = "#000000";
+  context.fillStyle = "#6b7280";
   context.font = "12px Inter, system-ui, sans-serif";
   context.textAlign = "right";
   context.fillText(formatPrice(maxPrice), leftPadding - 8, topPadding + 6);
@@ -537,11 +807,11 @@ function renderHistoryGraph(history) {
     context.beginPath();
     context.moveTo(tickPoint.x, tickYStart);
     context.lineTo(tickPoint.x, tickYStart + 5);
-    context.strokeStyle = "#334059";
+    context.strokeStyle = "#d1d5db";
     context.lineWidth = 1;
     context.stroke();
 
-    context.fillStyle = "#000000";
+    context.fillStyle = "#6b7280";
     if (tick === 0) {
       context.textAlign = "left";
     } else if (tick === tickCount - 1) {
@@ -571,14 +841,14 @@ function drawHistoryHover(index) {
   const point = graphPoints[index];
   const context = stockHistoryCanvas.getContext("2d");
 
-  context.strokeStyle = "#0f7b4b";
-  context.lineWidth = 2;
+  context.strokeStyle = "#4b5563";
+  context.lineWidth = 1.75;
   context.beginPath();
   context.moveTo(point.x, graphArea.top);
   context.lineTo(point.x, graphArea.bottom);
   context.stroke();
 
-  context.fillStyle = "#0f7b4b";
+  context.fillStyle = "#4b5563";
   context.beginPath();
   context.arc(point.x, point.y, 4, 0, Math.PI * 2);
   context.fill();
@@ -1080,8 +1350,12 @@ async function api(path, options = {}) {
 
 async function loadAppData() {
   const user = await api("/api/auth/me");
+  const acceptedVersion = String(user.termsVersionAccepted || "").trim();
+  const requiredVersion = String(user.termsVersionRequired || CURRENT_TERMS_VERSION).trim();
+  const requiresTermsAcceptance = Boolean(user.mustAcceptTerms) || acceptedVersion !== requiredVersion;
+  user.mustAcceptTerms = requiresTermsAcceptance;
   setLoggedInUi(user);
-  if (user.mustAcceptTerms) {
+  if (requiresTermsAcceptance) {
     return { requiresTermsAcceptance: true };
   }
   const recs = await api("/api/recommendations");
@@ -1313,7 +1587,7 @@ async function handleAuth() {
     const payload = { name, email, password };
     if (authMode === "register") {
       payload.termsAccepted = true;
-      payload.termsVersion = TERMS_VERSION;
+      payload.termsVersion = CURRENT_TERMS_VERSION;
     }
 
     const authResult = await api(`/api/auth/${authMode}`, {
@@ -1361,7 +1635,7 @@ async function handleAcceptUpdatedTerms() {
   try {
     await api("/api/auth/accept-terms", {
       method: "POST",
-      body: JSON.stringify({ termsAccepted: true, termsVersion: TERMS_VERSION }),
+      body: JSON.stringify({ termsAccepted: true, termsVersion: CURRENT_TERMS_VERSION }),
     });
 
     const appState = await loadAppData();
@@ -1587,7 +1861,7 @@ authActionBtn.addEventListener("click", async () => {
   try {
     await api("/api/auth/logout", { method: "POST" });
     setLoggedOutUi();
-    setMessage("Signed out.", false);
+    setMessage("Signed out.", false, { autoHideMs: 3000 });
   } catch (error) {
     setMessage(error.message);
   }
@@ -1681,6 +1955,62 @@ pastRecsTabBtn.addEventListener("click", () => {
   setStocksTab("past");
 });
 
+if (homeTopInsightCta) {
+  homeTopInsightCta.addEventListener("click", async () => {
+    if (!homeTopInsight) {
+      return;
+    }
+
+    if (!currentUser) {
+      setAuthMode("login");
+      showPage("auth");
+      setMessage("Please log in to view full stock insight.");
+      return;
+    }
+
+    if (guardTermsAcceptance()) {
+      return;
+    }
+
+    await openStockDetails(homeTopInsight.ticker, homeTopInsight.company, homeTopInsight.rationale || "");
+  });
+}
+
+if (homeFinalPrimaryBtn) {
+  homeFinalPrimaryBtn.addEventListener("click", async () => {
+    if (!isAuthenticatedUserSession()) {
+      setAuthMode("login");
+      showPage("auth");
+      setMessage("Please log in to view stock insights.", false);
+      return;
+    }
+
+    if (guardTermsAcceptance()) {
+      return;
+    }
+
+    showPage("stocks");
+    try {
+      await loadAppData();
+    } catch {
+      setLoggedOutUi();
+      showPage("auth");
+    }
+  });
+}
+
+if (homeFinalSecondaryBtn) {
+  homeFinalSecondaryBtn.addEventListener("click", () => {
+    if (isAuthenticatedUserSession()) {
+      return;
+    }
+
+    setAuthMode("login");
+    showPage("auth");
+    setMessage("", false);
+  });
+}
+
 (async () => {
   const initialPage = getInitialPageFromUrl();
 
@@ -1688,7 +2018,9 @@ pastRecsTabBtn.addEventListener("click", () => {
   setInvestmentModeUi();
   resetAdminForm();
   startMarketCountdown();
+  await loadHomeTopInsight();
   setAdminTab("stocks");
+  updateHomeFinalCtaUi();
   showPage(initialPage === "admin" ? "home" : initialPage);
   try {
     const appState = await loadAppData();

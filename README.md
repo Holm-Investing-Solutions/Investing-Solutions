@@ -1,4 +1,4 @@
-# Holm Investing Solutions
+# Holm Capital
 
 A simple web app where users can create an account, log in, and view current Stock Insights (buy/sell).
 

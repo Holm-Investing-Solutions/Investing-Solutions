@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Holm Investing Solutions</title>
+    <title>Holm Capital</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="siteHeader">
       <div class="container headerInner">
-        <h1>Holm Investing Solutions</h1>
+        <h1>Holm Capital</h1>
         <nav class="buttonRow pageNav">
           <button type="button" id="homeNavBtn" class="secondary pageNavBtn">Home</button>
           <button type="button" id="whatIsInvestingNavBtn" class="secondary pageNavBtn">What is Investing</button>
@@ -22,38 +22,249 @@
       </div>
     </header>
 
-    <section class="container">
-      <div class="marketCountdown" id="marketCountdown">
-        <p class="muted">Time Until Market Opens (NYSE)</p>
-        <div id="marketCountdownValue" class="countdownValue">--:--:--</div>
-        <p id="marketCountdownMeta" class="muted"></p>
+    <section id="marketStatusBar" class="marketStatusBarWrap" aria-label="Market status bar">
+      <div class="marketStatusBarInner">
+        <div class="marketCountdown" id="marketCountdown" aria-label="Market status">
+          <span class="marketCountdownLabel">Market Status:</span>
+          <span id="marketCountdownValue" class="countdownValue">Closed • Opens in --:--:--</span>
+          <span id="marketCountdownMeta" class="marketCountdownMeta">• Next Open: --</span>
+        </div>
       </div>
     </section>
 
     <main class="container">
-      <section id="homePage" class="card">
-        <h2>Weekly Stock Guidance</h2>
-        <p>
-          We update our Stock Insights weekly based on market conditions,
-          company performance, and risk trends.
-        </p>
-        <p>
-          Check the Stocks page to see what we currently believe you should buy or sell.
-        </p>
+      <section id="homePage" class="homeLanding">
+        <section class="homeSection homeSectionWhite homeHeroSection">
+          <div class="homeInner homeHeroGrid">
+            <div class="homeHeroContent">
+              <h2 class="homeHeroTitle">Professional Market Insights From a Trader With Over 20 Years of Experience</h2>
+              <p class="homeHeroSubtitle">
+                Holm Capital delivers disciplined, research-driven stock insights and market analysis designed to help investors make informed and confident financial decisions.
+              </p>
+              <div class="buttonRow homeHeroActions">
+                <button type="button" class="homePrimaryBtn" data-footer-page="stocks">View Latest Stock Insights</button>
+                <button type="button" class="homeSecondaryBtn" data-footer-page="howToStartInvesting">Learn How to Start Investing</button>
+              </div>
+            </div>
+            <div class="homeHeroVisualWrap" aria-label="Financial visual preview">
+              <article class="homeTopInsightCard" id="homeTopInsightCard">
+                <div class="homeTopInsightHeader">
+                  <p class="homeTopInsightTitle">Top Performing Insight</p>
+                  <span id="homeTopInsightBadge" class="homeTopInsightBadge hidden">--</span>
+                </div>
+
+                <p id="homeTopInsightName" class="homeTopInsightName">Loading best performer...</p>
+                <p id="homeTopInsightRangeLabel" class="homeTopInsightRangeLabel muted"></p>
+
+                <div class="homeTopInsightChartWrap" aria-label="Top insight price chart">
+                  <svg id="homeTopInsightChart" class="homeTopInsightChart" viewBox="0 0 520 280" role="img" aria-label="Top insight line chart"></svg>
+                </div>
+
+                <div id="homeTopInsightMeta" class="homeTopInsightMeta"></div>
+
+                <p id="homeTopInsightRationale" class="homeTopInsightRationale muted"></p>
+
+                <div class="buttonRow" style="justify-content: flex-start; margin-top: 0.25rem;">
+                  <button type="button" id="homeTopInsightCta" class="homePrimaryBtn">View Full Insight</button>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="homeSection homeSectionGray homeStatsSection" aria-label="Holm Capital key statistics">
+          <div class="homeInner homeStatsGrid">
+            <article class="homeStatBlock">
+              <strong>20+</strong>
+              <p>Years Trading Experience</p>
+            </article>
+            <article class="homeStatBlock">
+              <strong>Professional</strong>
+              <p>Market Analysis</p>
+            </article>
+            <article class="homeStatBlock">
+              <strong>Disciplined</strong>
+              <p>Risk Management</p>
+            </article>
+            <article class="homeStatBlock">
+              <strong>Weekly</strong>
+              <p>Insight Updates</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="homeSection homeSectionWhite homeCredibilitySection">
+          <div class="homeInner">
+            <h2 class="homeSectionTitle">Built on Real Trading Experience</h2>
+            <div class="homeReadableText">
+              <p>
+                Holm Capital was founded by a professional trader with more than 20 years of experience in global financial markets. This includes extensive experience in foreign exchange trading, macroeconomic analysis, and identifying structured market opportunities.
+              </p>
+              <p>
+                Our methodology emphasizes disciplined analysis, risk management, and a long-term perspective grounded in real market experience.
+              </p>
+            </div>
+            <ul class="homeBulletList">
+              <li>20+ years of professional trading experience</li>
+              <li>Structured market analysis</li>
+              <li>Strong focus on risk management</li>
+              <li>Long-term disciplined investment approach</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="homeSection homeSectionGray">
+          <div class="homeInner">
+            <h2 class="homeSectionTitle homeWhatYouGetTitle">What You Get</h2>
+            <div class="homeFeatureGrid">
+              <article class="homeFeatureCard">
+                <h3>Market Insights</h3>
+                <p>
+                  Professional analysis of individual stocks including technical structure, macro influences, and potential opportunity zones.
+                </p>
+              </article>
+              <article class="homeFeatureCard">
+                <h3>Investor Education</h3>
+                <p>
+                  Clear, practical resources to help investors better understand financial markets and improve decision-making confidence.
+                </p>
+              </article>
+              <article class="homeFeatureCard">
+                <h3>Disciplined Strategy</h3>
+                <p>
+                  A structured investment perspective focused on patience, consistency, and risk-adjusted returns.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="homeSection homeSectionWhite">
+          <div class="homeInner homeTrustGrid">
+            <div>
+              <h2 class="homeSectionTitle">A Disciplined Research Framework</h2>
+              <div class="homeReadableText">
+                <p>
+                  Our framework prioritizes market structure, macro awareness, and long-term consistency to deliver professional guidance that supports confident decision-making.
+                </p>
+              </div>
+              <ul class="homeBulletList compact">
+                <li>Professional trading experience across market cycles</li>
+                <li>Structured, repeatable research process</li>
+                <li>Risk-managed market positioning</li>
+                <li>Long-term, disciplined strategic outlook</li>
+              </ul>
+            </div>
+            <article class="homeTrustVisual">
+              <h3>Research Framework</h3>
+              <p class="muted">Macro context, technical structure, and risk-adjusted planning.</p>
+              <div class="homeTrustTags">
+                <span>Macro Analysis</span>
+                <span>Market Structure</span>
+                <span>Risk Controls</span>
+                <span>Position Discipline</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="homeSection homeSectionGray homeApproachSection">
+          <div class="homeInner homeApproachInner">
+            <h2 class="homeSectionTitle">A Professional Approach to Investing</h2>
+            <p>
+              Financial markets reward discipline, patience, and effective risk management. Holm Capital focuses on structured analysis rather than speculation or hype, helping investors build confidence through experience-based market insights.
+            </p>
+          </div>
+        </section>
+
+        <section class="homeSection homeSectionCta">
+          <div class="homeInner homeCtaInner">
+            <h2 class="homeSectionTitle">Access Professional Market Insights</h2>
+            <div class="buttonRow homeCtaActions">
+              <button type="button" id="homeFinalPrimaryBtn" class="homePrimaryBtn">View Stock Insights</button>
+              <button type="button" id="homeFinalSecondaryBtn" class="homeSecondaryBtn">Log In / Create Account</button>
+            </div>
+          </div>
+        </section>
       </section>
 
-      <section id="whatIsInvestingPage" class="card hidden">
-        <h2>What is Investing?</h2>
-        <p>
-          Investing is putting money into assets with the goal of growing your wealth over time.
-          Instead of keeping all money in cash, investors buy things like stocks, bonds, or funds
-          that can increase in value or pay income.
-        </p>
-        <p>
-          The core idea is long-term growth: your money can earn returns, and those returns can
-          compound over years. Investing always has risk, but diversification and patience can help
-          reduce that risk.
-        </p>
+      <section id="whatIsInvestingPage" class="investingLanding hidden">
+        <section class="investingSection investingHeroSection">
+          <div class="investingInner investingCenterBlock">
+            <h2 class="investingTitle">What Is Investing?</h2>
+            <p class="investingIntroText">
+              Investing is the long-term process of putting capital to work in financial assets with the objective of growing wealth through disciplined strategy, patience, and risk awareness.
+            </p>
+          </div>
+        </section>
+
+        <section class="investingSection investingDefinitionSection">
+          <div class="investingInner">
+            <article class="investingContentCard">
+              <h3 class="investingDefinitionTitle">What Investing Means</h3>
+              <p>
+                Investing is the process of allocating capital with the goal of generating returns over time. Unlike saving, which focuses on preserving money, investing seeks to grow wealth through exposure to financial assets such as stocks, bonds, and other instruments.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="investingSection investingImportanceSection">
+          <div class="investingInner investingCenterBlock">
+            <h3 class="investingSectionHeading">Why Investing Is Important</h3>
+            <p class="investingBodyText">
+              Inflation gradually reduces the purchasing power of money. Investing allows individuals to grow their capital over time, helping protect and increase their long-term financial security. Historically, financial markets have provided consistent long-term growth for disciplined investors.
+            </p>
+          </div>
+        </section>
+
+        <section class="investingSection investingTypesSection">
+          <div class="investingInner">
+            <h3 class="investingSectionHeading investingSectionHeadingCentered">Main Types of Investments</h3>
+            <p class="investingSectionIntro investingSectionHeadingCentered">
+              Investors typically combine multiple asset classes to balance growth potential, risk, and liquidity.
+            </p>
+            <div class="investingTypesGrid">
+              <article class="investingTypeCard">
+                <h4>Stocks</h4>
+                <p>Ownership in companies.</p>
+              </article>
+              <article class="investingTypeCard">
+                <h4>Bonds</h4>
+                <p>Loans to governments or corporations.</p>
+              </article>
+              <article class="investingTypeCard">
+                <h4>Funds (ETFs &amp; Mutual Funds)</h4>
+                <p>Diversified portfolios across many assets.</p>
+              </article>
+              <article class="investingTypeCard">
+                <h4>Cash Equivalents</h4>
+                <p>Low risk instruments with typically lower returns.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="investingSection investingRiskSection">
+          <div class="investingInner">
+            <article class="investingContentCard investingRiskCard investingCenterBlock">
+              <h3 class="investingSectionHeading">Understanding Risk and Return</h3>
+              <p class="investingBodyText">
+                All investments involve risk. Higher potential returns generally involve higher levels of risk. Successful investing requires understanding this relationship and managing risk appropriately.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="investingSection investingCtaSection">
+          <div class="investingInner investingCenterBlock">
+            <h3 class="investingSectionHeading">Ready to Learn About Investing in Stocks?</h3>
+            <p class="investingCtaSupport">Continue building your investing knowledge.</p>
+            <div class="buttonRow investingCtaActions">
+              <button type="button" class="homePrimaryBtn" data-footer-page="investingInStocks">Learn About Investing in Stocks</button>
+            </div>
+          </div>
+        </section>
       </section>
 
       <section id="investingInStocksPage" class="card hidden">
@@ -158,38 +369,54 @@
         </div>
         <button type="button" id="toggleHistoryBtn" class="secondary">Show Price History</button>
         <section id="investmentCalculator" class="investmentCalcLayout">
-          <article class="calcPanel calcInputPanel">
-            <div class="calcHeader">
-              <h3>Investment Calculator</h3>
-              <p>Enter your investment details below.</p>
-            </div>
-            <div class="calcBody">
-              <label for="investmentMode">Share Amount</label>
-              <select id="investmentMode">
-                <option value="amount">By Money</option>
-                <option value="shares">By Shares</option>
-              </select>
-
-              <label id="investmentAmountLabel" for="investmentAmount">Amount</label>
-              <input id="investmentAmount" type="number" min="1" step="0.01" placeholder="1000" />
-
-              <label id="investmentSharesLabel" class="hidden" for="investmentShares">Amount</label>
-              <input id="investmentShares" class="hidden" type="number" min="0.0001" step="0.0001" placeholder="10" />
-
-              <label for="investmentDatePicker">Purchase Date</label>
-              <input id="investmentDatePicker" type="date" aria-label="Choose purchase date" />
-
-              <button type="button" id="calculateInvestmentBtn" class="calcActionBtn">Calculate</button>
-
-              <p id="investmentResult" class="muted"></p>
-              <div id="investmentOutcomeBox" class="investmentOutcomeBox hidden">
-                <p><strong>Purchase Price:</strong> <span id="investmentPurchasePrice">--</span></p>
-                <p><strong>Current Price:</strong> <span id="investmentCurrentPrice">--</span></p>
-                <p><strong>Position Value:</strong> <span id="investmentCurrentValue">--</span></p>
-                <p><strong>Gain/Loss:</strong> <span id="investmentGainLoss">--</span></p>
+          <div class="calcMainStack">
+            <article class="calcPanel calcInputPanel">
+              <div class="calcHeader">
+                <h3>Investment Return Calculator</h3>
+                <p>Enter your investment details below.</p>
               </div>
-            </div>
-          </article>
+              <div class="calcBody">
+                <label for="investmentMode">Share Amount</label>
+                <select id="investmentMode">
+                  <option value="amount">By Money</option>
+                  <option value="shares">By Shares</option>
+                </select>
+
+                <label id="investmentAmountLabel" for="investmentAmount">Amount</label>
+                <input id="investmentAmount" type="number" min="1" step="0.01" placeholder="1000" />
+
+                <label id="investmentSharesLabel" class="hidden" for="investmentShares">Amount</label>
+                <input id="investmentShares" class="hidden" type="number" min="0.0001" step="0.0001" placeholder="10" />
+
+                <label for="investmentDatePicker">Purchase Date</label>
+                <input id="investmentDatePicker" type="date" aria-label="Choose purchase date" />
+
+                <button type="button" id="calculateInvestmentBtn" class="calcActionBtn">Calculate</button>
+
+                <p id="investmentResult" class="muted"></p>
+                <div id="investmentOutcomeBox" class="investmentOutcomeBox hidden">
+                  <p><strong>Purchase Price:</strong> <span id="investmentPurchasePrice">--</span></p>
+                  <p><strong>Current Price:</strong> <span id="investmentCurrentPrice">--</span></p>
+                  <p><strong>Position Value:</strong> <span id="investmentCurrentValue">--</span></p>
+                  <p><strong>Gain/Loss:</strong> <span id="investmentGainLoss">--</span></p>
+                </div>
+              </div>
+            </article>
+
+            <article class="calcPanel calcDetailCard calcExampleCard">
+              <div class="calcHeader calcHeaderCentered">
+                <h4>Example</h4>
+              </div>
+              <div class="calcBody calcDetailBody">
+                <p>If you invested $5,000 in a stock on January 1, 2020, the calculator will show:</p>
+                <ul>
+                  <li>What that investment would be worth today</li>
+                  <li>The total profit or loss</li>
+                  <li>The percentage return over the selected time period</li>
+                </ul>
+              </div>
+            </article>
+          </div>
 
           <article class="calcPanel calcInfoPanel">
             <div class="calcHeader calcHeaderCentered">
@@ -236,7 +463,7 @@
           </article>
         </section>
         <section class="calcDetailsGrid">
-          <article class="calcPanel calcDetailCard">
+          <article class="calcPanel calcDetailCard calcDetailCardWide">
             <div class="calcHeader calcHeaderCentered">
               <h4>What The Calculator Shows</h4>
             </div>
@@ -247,20 +474,6 @@
                 <li>Dollar gain or loss</li>
                 <li>Percentage return</li>
                 <li>Overall growth of capital</li>
-              </ul>
-            </div>
-          </article>
-
-          <article class="calcPanel calcDetailCard">
-            <div class="calcHeader calcHeaderCentered">
-              <h4>Example</h4>
-            </div>
-            <div class="calcBody calcDetailBody">
-              <p>If you invested $5,000 in a stock on January 1, 2020, the calculator will show:</p>
-              <ul>
-                <li>What that investment would be worth today</li>
-                <li>The total profit or loss</li>
-                <li>The percentage return over the selected time period</li>
               </ul>
             </div>
           </article>
@@ -363,16 +576,16 @@
             </div>
           </label>
           <div id="registerTermsSection" class="registerTerms hidden">
-            <p class="registerTermsVersion">Terms and Conditions Version 1.1</p>
+            <p class="registerTermsVersion">Terms and Conditions Version 1.2</p>
             <iframe
               class="registerTermsFrame"
               src="terms-content.html"
-              title="Terms and Conditions Version 1.1"
+              title="Terms and Conditions Version 1.2"
               loading="lazy"
             ></iframe>
             <label class="termsAgreeRow" for="agreeTerms">
               <input id="agreeTerms" name="agreeTerms" type="checkbox" />
-              <span>I agree to the Terms and Conditions (Version 1.1).</span>
+              <span>I agree to the Terms and Conditions (Version 1.2).</span>
             </label>
           </div>
           <div class="buttonRow">
@@ -385,18 +598,18 @@
 
       <section id="termsAcceptancePage" class="card hidden">
         <h2>Terms and Conditions Update Required</h2>
-        <p class="muted">To continue, please review and accept Terms and Conditions Version 1.1.</p>
+        <p class="muted">To continue, please review and accept Terms and Conditions Version 1.2.</p>
         <div class="registerTerms">
-          <p class="registerTermsVersion">Terms and Conditions Version 1.1</p>
+          <p class="registerTermsVersion">Terms and Conditions Version 1.2</p>
           <iframe
             class="registerTermsFrame"
             src="terms-content.html"
-            title="Terms and Conditions Version 1.1"
+            title="Terms and Conditions Version 1.2"
             loading="lazy"
           ></iframe>
           <label class="termsAgreeRow" for="acceptUpdatedTerms">
             <input id="acceptUpdatedTerms" name="acceptUpdatedTerms" type="checkbox" />
-            <span>I agree to the Terms and Conditions (Version 1.1).</span>
+            <span>I agree to the Terms and Conditions (Version 1.2).</span>
           </label>
           <div class="buttonRow termsAcceptanceActions">
             <button type="button" id="acceptTermsBtn">Accept Terms and Continue</button>
@@ -479,13 +692,13 @@
         </section>
       </section>
 
-      <p id="message" aria-live="polite"></p>
+      <p id="message" class="hidden" aria-live="polite"></p>
     </main>
 
     <footer class="siteFooter">
       <div class="container footerPanel">
         <section class="footerColumn footerBrand">
-          <h3>Holm Investing Solutions</h3>
+          <h3>Holm Capital</h3>
           <p>We evaluate market trends, company performance, and risk signals show users our market insights.</p>
           <p class="footerMetaLine">
             <span class="footerIcon" aria-hidden="true">
@@ -494,7 +707,7 @@
                 <path d="M4 7l8 6 8-6"></path>
               </svg>
             </span>
-            <a href="mailto:Team@HolmInvestingSolutions.com">Team@HolmInvestingSolutions.com</a>
+            <a href="mailto:Team@Holmcapital.com">Team@Holmcapital.com</a>
           </p>
           <p class="footerMetaLine">
             <span class="footerIcon" aria-hidden="true">
@@ -523,8 +736,8 @@
         </nav>
 
         <div class="footerBottom">
-          <p class="footerCopyright">© Holm Investing Solutions. All rights reserved.</p>
-          <p class="footerDisclaimer">Disclaimer: Content provided is for informational purposes only and is not financial advice. Holm Investing Solutions is not responsible for investment losses.</p>
+          <p class="footerCopyright">© Holm Capital. All rights reserved.</p>
+          <p class="footerDisclaimer">Disclaimer: Content provided is for informational purposes only and is not financial advice. Holm Capital is not responsible for investment losses.</p>
         </div>
       </div>
     </footer>
