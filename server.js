@@ -6,6 +6,7 @@ const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
 const supabaseAdmin = require("./supabaseAdmin");
+const termsConfig = require("./public/terms-config");
 
 const app = express();
 
@@ -46,7 +47,7 @@ const DEFAULT_ADMIN = {
 };
 
 const LEGACY_DEFAULT_ADMIN_EMAILS = ["brodyholm73@gmail.com"];
-const CURRENT_TERMS_VERSION = "1.2";
+const CURRENT_TERMS_VERSION = termsConfig.CURRENT_TERMS_VERSION;
 
 const DEFAULT_RECOMMENDATIONS = [
   {
@@ -489,6 +490,10 @@ app.use(
 
 app.use(express.static(path.join(__dirname, "public")));
 
+app.get(["/dashboard", "/dashboard/"], (_req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 function requireAuth(req, res, next) {
   if (!req.session.userId) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -543,6 +548,7 @@ function mapUserForClient(user) {
     createdAt: user.created_at,
     termsAcceptedAt: user.terms_accepted_at,
     termsVersionAccepted: user.terms_version_accepted,
+    isAdmin: isAdminEmail(user.email),
   };
 }
 
@@ -696,7 +702,6 @@ app.post("/api/auth/register", async (req, res) => {
   const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || "");
   const termsAccepted = Boolean(req.body.termsAccepted);
-  const termsVersion = String(req.body.termsVersion || "").trim();
 
   if (name.length < 2 || !email.includes("@") || password.length < 8) {
     return res
@@ -704,7 +709,7 @@ app.post("/api/auth/register", async (req, res) => {
       .json({ error: "Name, valid email, and password (8+ chars) are required." });
   }
 
-  if (!termsAccepted || termsVersion !== CURRENT_TERMS_VERSION) {
+  if (!termsAccepted) {
     return res
       .status(400)
       .json({ error: `You must agree to Terms and Conditions version ${CURRENT_TERMS_VERSION}.` });
@@ -863,9 +868,8 @@ app.post("/api/auth/accept-terms", requireAuth, async (req, res) => {
   }
 
   const termsAccepted = Boolean(req.body.termsAccepted);
-  const termsVersion = String(req.body.termsVersion || "").trim();
 
-  if (!termsAccepted || termsVersion !== CURRENT_TERMS_VERSION) {
+  if (!termsAccepted) {
     return res.status(400).json({
       error: `You must accept Terms and Conditions version ${CURRENT_TERMS_VERSION}.`,
     });

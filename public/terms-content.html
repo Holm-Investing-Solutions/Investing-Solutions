@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Terms Content | Holm Capital</title>
     <link rel="stylesheet" href="styles.css" />
+    <script src="terms-config.js"></script>
   </head>
   <body class="termsEmbedBody">
     <main class="termsEmbedMain">
-      <p class="termsEmbedMeta">Terms and Conditions Version 1.2 • Last Updated: March 21, 2026</p>
+      <p class="termsEmbedMeta">
+        <span id="termsEmbedVersionText">Terms and Conditions Version 1.12</span>
+        •
+        <span id="termsEmbedLastUpdatedText">Last Updated: March 22, 2026</span>
+      </p>
 
       <section class="card termsContent" aria-label="Terms Content">
         <ol>
@@ -67,6 +72,7 @@
             </ul>
           </li>
 
+
           <li>
             <h2>Subscription Terms</h2>
             <p>If you purchase a subscription:</p>
@@ -75,10 +81,22 @@
               <li>Subscriptions may automatically renew unless canceled</li>
               <li>You may cancel at any time, effective at the end of the billing cycle</li>
               <li>No refunds are provided unless required by law</li>
-              <li>We reserve the right to change pricing with reasonable notice.</li>
+              <li>We reserve the right to change pricing with reasonable notice</li>
+              <li>We reserve the right to change subscription pricing, billing structure, included features, or plan availability at any time</li>
+              <li>We may introduce new paid tiers or convert existing free features into subscription-only features</li>
             </ul>
           </li>
 
+          <li>
+            <h2>Service Modifications &amp; Subscription Transition</h2>
+            <p>Holm Capital may modify, suspend, discontinue, or change any part of the Service at any time, including transitioning features or content from free access to paid subscription access.</p>
+            <p>We reserve the right to introduce subscription plans, change pricing, modify feature availability, or restrict access to certain tools, research, or content at our sole discretion.</p>
+            <p>Some features that are currently free may become paid in the future.</p>
+            <p>Continued use of the Service after such changes constitutes acceptance of the updated pricing, features, or access structure.</p>
+            <p>If you do not agree with the changes, your sole remedy is to discontinue use of the Service.</p>
+            <p>We may require users to accept updated Terms before accessing certain features or continuing to use their account.</p>
+            <p>Failure to accept updated Terms may result in suspension or termination of account access.</p>
+          </li>
           <li>
             <h2>Intellectual Property</h2>
             <p>All content, branding, research, graphics, text, and materials are the exclusive property of Holm Capital.</p>
@@ -146,21 +164,25 @@
             <p>You agree that any claims must be brought individually and not as a plaintiff or class member in any purported class or representative proceeding.</p>
           </li>
 
+
           <li>
             <h2>Termination</h2>
             <p>We may suspend or terminate your access at any time, for any reason, without notice.</p>
+            <p>We may suspend or terminate access to free features or accounts as part of service restructuring, subscription transitions, or platform updates.</p>
           </li>
-
           <li>
             <h2>Governing Law</h2>
             <p>These Terms shall be governed by the laws of the State of [Your State], United States, without regard to conflict of law principles.</p>
           </li>
 
+
           <li>
             <h2>Changes to Terms</h2>
-            <p>We may update these Terms at any time. Continued use of the Service after changes constitutes acceptance.</p>
+            <p>We may update, modify, or replace these Terms at any time, including changes related to pricing, subscriptions, feature access, legal protections, or service functionality.</p>
+            <p>When material changes occur, we may require users to re-accept the updated Terms before continuing to access the Service.</p>
+            <p>Continued use of the Service after updated Terms become effective constitutes acceptance of the revised Terms.</p>
+            <p>If you do not agree to the updated Terms, you must stop using the Service and cancel any active subscriptions.</p>
           </li>
-
           <li>
             <h2>Contact Information</h2>
             <p>Holm Capital Legal Department</p>
@@ -169,5 +191,23 @@
         </ol>
       </section>
     </main>
+    <script>
+      (function applyTermsMetaFromConfig() {
+        const config = window.HOLM_TERMS_CONFIG;
+        if (!config) {
+          return;
+        }
+
+        const versionElement = document.getElementById("termsEmbedVersionText");
+        if (versionElement) {
+          versionElement.textContent = `Terms and Conditions Version ${config.CURRENT_TERMS_VERSION}`;
+        }
+
+        const updatedElement = document.getElementById("termsEmbedLastUpdatedText");
+        if (updatedElement) {
+          updatedElement.textContent = `Last Updated: ${config.LAST_UPDATED}`;
+        }
+      })();
+    </script>
   </body>
 </html>

@@ -293,8 +293,17 @@
       </section>
 
       <section id="stocksPage" class="card hidden">
+        <div id="stocksLockedView" class="stocksLockedGate hidden">
           <h2>Stock Insights</h2>
-        <p id="welcomeText" class="muted"></p>
+          <p class="stocksLockedLead">Create a free account to view this page.</p>
+          <p class="muted stocksLockedSupport">
+            Access stock insights, market tools, and educational resources with a free Holm Capital account.
+          </p>
+        </div>
+
+        <div id="stocksAuthedView">
+          <h2>Stock Insights</h2>
+          <p id="welcomeText" class="muted"></p>
           <p class="muted stocksPastInfo">
             Stocks move to Past Stock Insights after being marked SELL for 5 business days.
           </p>
@@ -302,23 +311,21 @@
             <button type="button" id="currentRecsTabBtn" class="secondary" role="tab" aria-selected="true">Current Stock Insights</button>
             <button type="button" id="pastRecsTabBtn" class="secondary" role="tab" aria-selected="false">Past Stock Insights</button>
           </div>
-        <div id="stockFilterBar" class="stockFilterBar hidden">
-          <label class="inlineControl" for="stockFilterType">Filter by</label>
-          <select id="stockFilterType">
-            <option value="name">Name</option>
-            <option value="price">Stock Price (at or below)</option>
-            <option value="sector">Sector</option>
-          </select>
-          <input id="stockFilterValue" type="text" placeholder="Enter name" />
-          <select id="stockSectorFilter" class="hidden"></select>
-          <button type="button" id="applyStockFilterBtn" class="secondary">Filter</button>
-          <button type="button" id="clearStockFilterBtn" class="secondary">Clear</button>
+          <div id="stockFilterBar" class="stockFilterBar hidden">
+            <label class="inlineControl" for="stockFilterType">Filter by</label>
+            <select id="stockFilterType">
+              <option value="name">Name</option>
+              <option value="price">Stock Price (at or below)</option>
+              <option value="sector">Sector</option>
+            </select>
+            <input id="stockFilterValue" type="text" placeholder="Enter name" />
+            <select id="stockSectorFilter" class="hidden"></select>
+            <button type="button" id="applyStockFilterBtn" class="secondary">Filter</button>
+            <button type="button" id="clearStockFilterBtn" class="secondary">Clear</button>
+          </div>
+          <div id="stockList" class="stack"></div>
+          <div id="pastStockList" class="stack hidden"></div>
         </div>
-        <div id="stocksLockedMessage" class="muted">
-          Please log in to view the stocks we recommend buying or selling.
-        </div>
-        <div id="stockList" class="stack"></div>
-        <div id="pastStockList" class="stack hidden"></div>
       </section>
 
       <section id="stockDetailPage" class="card hidden">
@@ -576,16 +583,16 @@
             </div>
           </label>
           <div id="registerTermsSection" class="registerTerms hidden">
-            <p class="registerTermsVersion">Terms and Conditions Version 1.2</p>
+            <p class="registerTermsVersion">Terms and Conditions Version 1.12</p>
             <iframe
               class="registerTermsFrame"
-              src="terms-content.html"
-              title="Terms and Conditions Version 1.2"
+              src="terms-content.html?v=1.12"
+              title="Terms and Conditions Version 1.12"
               loading="lazy"
             ></iframe>
             <label class="termsAgreeRow" for="agreeTerms">
               <input id="agreeTerms" name="agreeTerms" type="checkbox" />
-              <span>I agree to the Terms and Conditions (Version 1.2).</span>
+              <span>I agree to the Terms and Conditions (Version 1.12).</span>
             </label>
           </div>
           <div class="buttonRow">
@@ -598,21 +605,54 @@
 
       <section id="termsAcceptancePage" class="card hidden">
         <h2>Terms and Conditions Update Required</h2>
-        <p class="muted">To continue, please review and accept Terms and Conditions Version 1.2.</p>
+        <p class="muted">To continue, please review and accept Terms and Conditions Version 1.12.</p>
         <div class="registerTerms">
-          <p class="registerTermsVersion">Terms and Conditions Version 1.2</p>
+          <p class="registerTermsVersion">Terms and Conditions Version 1.12</p>
           <iframe
             class="registerTermsFrame"
-            src="terms-content.html"
-            title="Terms and Conditions Version 1.2"
+            src="terms-content.html?v=1.12"
+            title="Terms and Conditions Version 1.12"
             loading="lazy"
           ></iframe>
           <label class="termsAgreeRow" for="acceptUpdatedTerms">
             <input id="acceptUpdatedTerms" name="acceptUpdatedTerms" type="checkbox" />
-            <span>I agree to the Terms and Conditions (Version 1.2).</span>
+            <span>I agree to the Terms and Conditions (Version 1.12).</span>
           </label>
           <div class="buttonRow termsAcceptanceActions">
             <button type="button" id="acceptTermsBtn">Accept Terms and Continue</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="acceptTermsSignupPage" class="card hidden acceptTermsCard">
+        <div class="acceptTermsPageContainer">
+          <div class="acceptTermsInner">
+            <div class="header-center">
+              <h2 class="acceptTermsTitle">Terms of Service Agreement</h2>
+              <p class="acceptTermsIntro muted">
+                Review and accept the Terms and Conditions to complete your account setup.
+              </p>
+            </div>
+
+            <div class="terms-document">
+              <iframe
+                class="registerTermsFrame"
+                src="terms-content.html?v=1.12"
+                title="Terms and Conditions Version 1.12"
+                loading="lazy"
+              ></iframe>
+            </div>
+
+            <div class="terms-actions">
+              <label class="termsAgreeRow" for="signupAcceptTermsCheckbox">
+                <input id="signupAcceptTermsCheckbox" name="signupAcceptTermsCheckbox" type="checkbox" />
+                <span>I agree to the Terms and Conditions</span>
+              </label>
+
+              <p id="signupAcceptTermsStatusMessage" class="muted" aria-live="polite"></p>
+
+              <button type="button" id="completeSignupFromTermsBtn">Complete Account Creation</button>
+            </div>
           </div>
         </div>
       </section>
@@ -688,9 +728,37 @@
 
         <section id="adminUsersSection" class="hidden">
           <h3>Registered Users</h3>
-          <div id="adminUsersList" class="stack"></div>
+          <div class="adminUsersLayout">
+            <article class="stockCard adminUsersTablePanel">
+              <h4>All Registered Users</h4>
+              <div class="tableWrap">
+                <table class="historyTable adminUsersTable" aria-label="Registered users table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>User ID</th>
+                      <th>Joined</th>
+                      <th>Terms Accepted</th>
+                      <th>Terms Version</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminUsersTableBody"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <div id="adminUsersList" class="adminUsersCardsGrid"></div>
+
+            <article class="stockCard adminUsersEmailsPanel">
+              <h4>All User Emails</h4>
+              <ul id="adminUsersEmailList" class="adminUsersEmailList"></ul>
+            </article>
+          </div>
         </section>
       </section>
+
+      <div id="accountSignupBlockMount" data-account-signup-mount></div>
 
       <p id="message" class="hidden" aria-live="polite"></p>
     </main>
@@ -742,6 +810,8 @@
       </div>
     </footer>
 
+    <script src="terms-config.js" defer></script>
+    <script src="account-signup-block.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

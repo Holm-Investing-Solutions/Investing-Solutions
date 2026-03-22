@@ -9,6 +9,7 @@ const marketCountdown = document.getElementById("marketCountdown");
 const marketStatusBar = document.getElementById("marketStatusBar");
 const authPanel = document.getElementById("authPanel");
 const termsAcceptancePage = document.getElementById("termsAcceptancePage");
+const acceptTermsSignupPage = document.getElementById("acceptTermsSignupPage");
 const homeNavBtn = document.getElementById("homeNavBtn");
 const whatIsInvestingNavBtn = document.getElementById("whatIsInvestingNavBtn");
 const investingInStocksNavBtn = document.getElementById("investingInStocksNavBtn");
@@ -29,6 +30,9 @@ const registerTermsSection = document.getElementById("registerTermsSection");
 const agreeTermsInput = document.getElementById("agreeTerms");
 const acceptUpdatedTermsInput = document.getElementById("acceptUpdatedTerms");
 const acceptTermsBtn = document.getElementById("acceptTermsBtn");
+const signupAcceptTermsCheckbox = document.getElementById("signupAcceptTermsCheckbox");
+const signupAcceptTermsStatusMessage = document.getElementById("signupAcceptTermsStatusMessage");
+const completeSignupFromTermsBtn = document.getElementById("completeSignupFromTermsBtn");
 const passwordVisibilityBtn = document.getElementById("passwordVisibilityBtn");
 const passwordEyeOpenIcon = passwordVisibilityBtn.querySelector(".eyeOpen");
 const passwordEyeClosedIcon = passwordVisibilityBtn.querySelector(".eyeClosed");
@@ -42,7 +46,8 @@ const clearStockFilterBtn = document.getElementById("clearStockFilterBtn");
 const currentRecsTabBtn = document.getElementById("currentRecsTabBtn");
 const pastRecsTabBtn = document.getElementById("pastRecsTabBtn");
 const welcomeText = document.getElementById("welcomeText");
-const stocksLockedMessage = document.getElementById("stocksLockedMessage");
+const stocksLockedView = document.getElementById("stocksLockedView");
+const stocksAuthedView = document.getElementById("stocksAuthedView");
 const pastStockList = document.getElementById("pastStockList");
 const stockDetailTitle = document.getElementById("stockDetailTitle");
 const stockDetailMeta = document.getElementById("stockDetailMeta");
@@ -97,9 +102,12 @@ const adminUsersSection = document.getElementById("adminUsersSection");
 const adminList = document.getElementById("adminList");
 const adminPastList = document.getElementById("adminPastList");
 const adminUsersList = document.getElementById("adminUsersList");
+const adminUsersTableBody = document.getElementById("adminUsersTableBody");
+const adminUsersEmailList = document.getElementById("adminUsersEmailList");
 const footerPageLinks = document.querySelectorAll("[data-footer-page]");
 const message = document.getElementById("message");
 const mainContainer = document.querySelector("main.container");
+const accountSignupBlockMount = document.getElementById("accountSignupBlockMount");
 const homeTopInsightName = document.getElementById("homeTopInsightName");
 const homeTopInsightRangeLabel = document.getElementById("homeTopInsightRangeLabel");
 const homeTopInsightBadge = document.getElementById("homeTopInsightBadge");
@@ -121,8 +129,15 @@ let allRecommendations = [];
 let stocksTabView = "current";
 let homeTopInsight = null;
 let messageAutoHideTimer = null;
+let authStateKnown = false;
+let currentVisiblePage = "home";
 
-const CURRENT_TERMS_VERSION = "1.2";
+const CURRENT_TERMS_VERSION =
+  window.HOLM_TERMS_CONFIG?.CURRENT_TERMS_VERSION || "1.12";
+const TERMS_CONTENT_PATH =
+  window.HOLM_TERMS_CONFIG?.TERMS_CONTENT_PATH || `terms-content.html?v=${encodeURIComponent(CURRENT_TERMS_VERSION)}`;
+const PENDING_SIGNUP_KEY = "pendingSignupData";
+const PRIMARY_ADMIN_EMAIL = "austinrayholm@yahoo.com";
 
 const SECTOR_OPTIONS = [
   "Communication Services",
@@ -167,6 +182,11 @@ function setSectorDropdownOptions() {
 }
 
 function getInitialPageFromUrl() {
+  const pathname = String(window.location.pathname || "").toLowerCase();
+  if (pathname === "/dashboard") {
+    return "stocks";
+  }
+
   const page = new URLSearchParams(window.location.search).get("page");
   const allowedPages = new Set([
     "home",
@@ -176,9 +196,37 @@ function getInitialPageFromUrl() {
     "stocks",
     "admin",
     "auth",
+    "accept-terms",
   ]);
 
   return allowedPages.has(page) ? page : "home";
+}
+
+function applyTermsConfigToUi() {
+  const versionText = `Terms and Conditions Version ${CURRENT_TERMS_VERSION}`;
+  const checkboxText = `I agree to the Terms and Conditions (Version ${CURRENT_TERMS_VERSION}).`;
+
+  document.querySelectorAll(".registerTermsVersion").forEach((element) => {
+    element.textContent = versionText;
+  });
+
+  document.querySelectorAll(".registerTermsFrame").forEach((frame) => {
+    frame.setAttribute("src", TERMS_CONTENT_PATH);
+    frame.setAttribute("title", versionText);
+  });
+
+  const termsRequiredText = document.querySelector("#termsAcceptancePage p.muted");
+  if (termsRequiredText) {
+    termsRequiredText.textContent = `To continue, please review and accept ${versionText}.`;
+  }
+
+  ["agreeTerms", "acceptUpdatedTerms", "signupAcceptTermsCheckbox"].forEach((inputId) => {
+    const input = document.getElementById(inputId);
+    const labelText = input?.closest("label")?.querySelector("span");
+    if (labelText) {
+      labelText.textContent = checkboxText;
+    }
+  });
 }
 
 function setMessage(text, isError = true, options = {}) {
@@ -251,7 +299,20 @@ function setStocksTab(view) {
   pastRecsTabBtn.setAttribute("aria-selected", showingPast ? "true" : "false");
 }
 
+function updateStocksPageAccessUi() {
+  const isAuthenticated = isAuthenticatedUserSession();
+
+  if (stocksLockedView) {
+    stocksLockedView.classList.toggle("hidden", isAuthenticated);
+  }
+
+  if (stocksAuthedView) {
+    stocksAuthedView.classList.toggle("hidden", !isAuthenticated);
+  }
+}
+
 function showPage(page) {
+  currentVisiblePage = page;
   homePage.classList.toggle("hidden", page !== "home");
   whatIsInvestingPage.classList.toggle("hidden", page !== "whatIsInvesting");
   investingInStocksPage.classList.toggle("hidden", page !== "investingInStocks");
@@ -261,14 +322,19 @@ function showPage(page) {
   adminPage.classList.toggle("hidden", page !== "admin");
   authPanel.classList.toggle("hidden", page !== "auth");
   termsAcceptancePage.classList.toggle("hidden", page !== "termsAcceptance");
+  if (acceptTermsSignupPage) {
+    acceptTermsSignupPage.classList.toggle("hidden", page !== "accept-terms");
+  }
   marketCountdown.classList.toggle("hidden", page !== "home");
   if (marketStatusBar) {
     marketStatusBar.classList.toggle("hidden", page !== "home");
   }
   mainContainer.classList.toggle("authWide", page === "auth");
   mainContainer.classList.toggle("stocksWide", page === "stocks" || page === "stockDetail");
+  mainContainer.classList.toggle("adminWide", page === "admin");
   mainContainer.classList.toggle("homeLandingActive", page === "home");
   mainContainer.classList.toggle("investingLandingActive", page === "whatIsInvesting");
+  mainContainer.classList.toggle("acceptTermsActive", page === "accept-terms");
 
   const onStocksPage = page === "stocks" || page === "stockDetail";
   const navButtons = [
@@ -304,6 +370,20 @@ function showPage(page) {
     adminNavBtn.classList.add("activePage");
     adminNavBtn.setAttribute("aria-current", "page");
   }
+
+  if (page === "accept-terms") {
+    hydrateSignupAcceptTermsPage();
+  }
+
+  if (page === "stocks") {
+    updateStocksPageAccessUi();
+  }
+
+  updateAccountSignupBlockVisibility(page);
+
+  window.requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+  });
 }
 
 function isAuthenticatedUserSession() {
@@ -320,14 +400,34 @@ function updateHomeFinalCtaUi() {
   homeFinalSecondaryBtn.classList.toggle("hidden", isAuthenticated);
 }
 
+function updateAccountSignupBlockVisibility(page) {
+  if (!accountSignupBlockMount) {
+    return;
+  }
+
+  const helper = window.AccountSignupBlock;
+  if (helper && typeof helper.updateVisibility === "function") {
+    helper.updateVisibility({
+      isAuthenticated: isAuthenticatedUserSession(),
+      currentPage: page,
+      authKnown: authStateKnown,
+    });
+    return;
+  }
+
+  accountSignupBlockMount.classList.add("hidden");
+}
+
 function setLoggedInUi(user) {
+  authStateKnown = true;
   currentUser = user;
   authActionBtn.textContent = "Sign Out";
   welcomeText.textContent = `Welcome, ${user.name} (${user.email})`;
   setStocksTab(stocksTabView);
-  stocksLockedMessage.classList.add("hidden");
+  updateStocksPageAccessUi();
   adminNavBtn.classList.toggle("hidden", !user.isAdmin || Boolean(user.mustAcceptTerms));
   updateHomeFinalCtaUi();
+  updateAccountSignupBlockVisibility(currentVisiblePage);
 }
 
 function setAuthMode(mode) {
@@ -348,6 +448,7 @@ function setAuthMode(mode) {
 }
 
 function setLoggedOutUi() {
+  authStateKnown = true;
   currentUser = null;
   authActionBtn.textContent = "Register/Log In";
   stockList.innerHTML = "";
@@ -380,7 +481,7 @@ function setLoggedOutUi() {
   stockSectorFilter.value = "all";
   setStocksTab("current");
   updateStockFilterInputMode();
-  stocksLockedMessage.classList.remove("hidden");
+  updateStocksPageAccessUi();
   adminNavBtn.classList.add("hidden");
   passwordInput.value = "";
   confirmPasswordInput.value = "";
@@ -394,7 +495,107 @@ function setLoggedOutUi() {
   setAuthMode("login");
   setAdminTab("stocks");
   updateHomeFinalCtaUi();
+  updateAccountSignupBlockVisibility(currentVisiblePage);
   showPage("home");
+}
+
+function getPendingSignupData() {
+  const raw = sessionStorage.getItem(PENDING_SIGNUP_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const name = String(parsed?.name || "").trim();
+    const email = String(parsed?.email || "").trim().toLowerCase();
+    const password = String(parsed?.password || "");
+    const retypePasswordValid = Boolean(parsed?.retypePasswordValid);
+    if (!name || !email || !password || !retypePasswordValid) {
+      return null;
+    }
+
+    return {
+      name,
+      email,
+      password,
+      retypePasswordValid,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function setSignupAcceptTermsStatus(text, isError = true) {
+  if (!signupAcceptTermsStatusMessage) {
+    return;
+  }
+
+  const messageText = String(text || "").trim();
+  signupAcceptTermsStatusMessage.textContent = messageText;
+  signupAcceptTermsStatusMessage.classList.remove("acceptTermsError", "acceptTermsSuccess");
+  if (!messageText) {
+    return;
+  }
+
+  signupAcceptTermsStatusMessage.classList.add(isError ? "acceptTermsError" : "acceptTermsSuccess");
+}
+
+function hydrateSignupAcceptTermsPage() {
+  if (!signupAcceptTermsCheckbox || !completeSignupFromTermsBtn) {
+    return;
+  }
+
+  signupAcceptTermsCheckbox.checked = false;
+  completeSignupFromTermsBtn.disabled = false;
+
+  const pending = getPendingSignupData();
+  if (!pending) {
+    setSignupAcceptTermsStatus("Signup details not found. Please use Create Free Account first.");
+    return;
+  }
+
+  setSignupAcceptTermsStatus("", false);
+}
+
+async function completeSignupFromStoredData() {
+  const pending = getPendingSignupData();
+  if (!pending) {
+    setSignupAcceptTermsStatus("Signup details not found. Please use Create Free Account first.");
+    return;
+  }
+
+  if (!signupAcceptTermsCheckbox || !signupAcceptTermsCheckbox.checked) {
+    setSignupAcceptTermsStatus("Please agree to the Terms and Conditions to continue.");
+    return;
+  }
+
+  if (!completeSignupFromTermsBtn) {
+    return;
+  }
+
+  completeSignupFromTermsBtn.disabled = true;
+  setSignupAcceptTermsStatus("Creating your account...", false);
+
+  try {
+    await api("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        name: pending.name,
+        email: pending.email,
+        password: pending.password,
+        termsAccepted: true,
+        termsVersion: CURRENT_TERMS_VERSION,
+      }),
+    });
+
+    sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+    setSignupAcceptTermsStatus("Account created. Redirecting...", false);
+    window.location.href = "index.html?page=stocks";
+  } catch (error) {
+    setSignupAcceptTermsStatus(error.message || "Failed to create account.");
+    completeSignupFromTermsBtn.disabled = false;
+  }
 }
 
 function requiresTermsAcceptance() {
@@ -1487,14 +1688,46 @@ function renderAdminList(stocks) {
 }
 
 function renderAdminUsers(users) {
-  adminUsersList.innerHTML = "";
+  const sortedUsers = [...users].sort((leftUser, rightUser) => {
+    const leftEmail = String(leftUser?.email || "").trim().toLowerCase();
+    const rightEmail = String(rightUser?.email || "").trim().toLowerCase();
+    const leftIsPrimaryAdmin = leftEmail === PRIMARY_ADMIN_EMAIL;
+    const rightIsPrimaryAdmin = rightEmail === PRIMARY_ADMIN_EMAIL;
+    if (leftIsPrimaryAdmin !== rightIsPrimaryAdmin) {
+      return leftIsPrimaryAdmin ? -1 : 1;
+    }
 
-  if (!users.length) {
+    const leftIsAdmin = Boolean(leftUser?.isAdmin);
+    const rightIsAdmin = Boolean(rightUser?.isAdmin);
+    if (leftIsAdmin !== rightIsAdmin) {
+      return leftIsAdmin ? -1 : 1;
+    }
+
+    const leftCreatedAt = new Date(leftUser?.createdAt || 0).getTime();
+    const rightCreatedAt = new Date(rightUser?.createdAt || 0).getTime();
+    return rightCreatedAt - leftCreatedAt;
+  });
+
+  adminUsersList.innerHTML = "";
+  if (adminUsersTableBody) {
+    adminUsersTableBody.innerHTML = "";
+  }
+  if (adminUsersEmailList) {
+    adminUsersEmailList.innerHTML = "";
+  }
+
+  if (!sortedUsers.length) {
     adminUsersList.innerHTML = "<p>No registered users.</p>";
+    if (adminUsersTableBody) {
+      adminUsersTableBody.innerHTML = '<tr><td colspan="6">No registered users.</td></tr>';
+    }
+    if (adminUsersEmailList) {
+      adminUsersEmailList.innerHTML = "<li>No registered users.</li>";
+    }
     return;
   }
 
-  for (const user of users) {
+  for (const user of sortedUsers) {
     const card = document.createElement("article");
     card.className = "stockCard";
     const displayName = user.name || "(no name)";
@@ -1516,6 +1749,25 @@ function renderAdminUsers(users) {
     `;
 
     adminUsersList.appendChild(card);
+
+    if (adminUsersTableBody) {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${displayName}</td>
+        <td>${user.email}</td>
+        <td>${user.id}</td>
+        <td>${new Date(user.createdAt).toLocaleDateString()}</td>
+        <td>${user.termsAcceptedAt ? new Date(user.termsAcceptedAt).toLocaleString() : "Not recorded"}</td>
+        <td>${user.termsVersionAccepted || "Not recorded"}</td>
+      `;
+      adminUsersTableBody.appendChild(row);
+    }
+
+    if (adminUsersEmailList) {
+      const emailItem = document.createElement("li");
+      emailItem.textContent = user.email;
+      adminUsersEmailList.appendChild(emailItem);
+    }
   }
 
   for (const deleteUserButton of adminUsersList.querySelectorAll("[data-delete-user-id]")) {
@@ -1544,6 +1796,12 @@ async function loadAdminData() {
   if (!currentUser || !currentUser.isAdmin) {
     adminList.innerHTML = "";
     adminUsersList.innerHTML = "";
+    if (adminUsersTableBody) {
+      adminUsersTableBody.innerHTML = "";
+    }
+    if (adminUsersEmailList) {
+      adminUsersEmailList.innerHTML = "";
+    }
     return;
   }
 
@@ -1633,21 +1891,37 @@ async function handleAcceptUpdatedTerms() {
   }
 
   try {
+    acceptTermsBtn.disabled = true;
+    setMessage("Accepting terms...", false);
+
     await api("/api/auth/accept-terms", {
       method: "POST",
       body: JSON.stringify({ termsAccepted: true, termsVersion: CURRENT_TERMS_VERSION }),
     });
 
+    // Refresh user state to verify acceptance was successful
     const appState = await loadAppData();
     if (appState.requiresTermsAcceptance) {
-      setMessage("Unable to verify terms acceptance. Please try again.");
+      acceptTermsBtn.disabled = false;
+      setMessage("Failed to verify terms acceptance. Please try again.");
       return;
     }
 
-    setMessage("Terms accepted. Welcome.", false);
-    showPage("stocks");
+    // Successfully accepted - redirect based on role
+    const destinationPage = currentUser && currentUser.isAdmin ? "admin" : "stocks";
+    setMessage("Terms accepted successfully.", false);
+    acceptTermsBtn.disabled = false;
+    acceptUpdatedTermsInput.checked = false;
+
+    if (destinationPage === "admin") {
+      showPage("admin");
+      await loadAdminData();
+    } else {
+      showPage("stocks");
+    }
   } catch (error) {
-    setMessage(error.message);
+    acceptTermsBtn.disabled = false;
+    setMessage(error.message || "Failed to accept terms. Please try again.");
   }
 }
 
@@ -2011,9 +2285,16 @@ if (homeFinalSecondaryBtn) {
   });
 }
 
+if (completeSignupFromTermsBtn) {
+  completeSignupFromTermsBtn.addEventListener("click", async () => {
+    await completeSignupFromStoredData();
+  });
+}
+
 (async () => {
   const initialPage = getInitialPageFromUrl();
 
+  applyTermsConfigToUi();
   setSectorDropdownOptions();
   setInvestmentModeUi();
   resetAdminForm();
@@ -2027,8 +2308,9 @@ if (homeFinalSecondaryBtn) {
     setMessage("", false);
 
     if (appState.requiresTermsAcceptance) {
+      acceptUpdatedTermsInput.checked = false;
       showPage("termsAcceptance");
-      setMessage("Please accept the latest Terms and Conditions to continue.");
+      setMessage("Please accept the updated Terms and Conditions to continue.");
       return;
     }
 
@@ -2057,7 +2339,8 @@ if (homeFinalSecondaryBtn) {
     } else if (
       initialPage === "whatIsInvesting" ||
       initialPage === "investingInStocks" ||
-      initialPage === "howToStartInvesting"
+      initialPage === "howToStartInvesting" ||
+      initialPage === "accept-terms"
     ) {
       showPage(initialPage);
     }
