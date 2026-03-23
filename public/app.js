@@ -333,7 +333,12 @@ function showPage(page) {
   mainContainer.classList.toggle("stocksWide", page === "stocks" || page === "stockDetail");
   mainContainer.classList.toggle("adminWide", page === "admin");
   mainContainer.classList.toggle("homeLandingActive", page === "home");
-  mainContainer.classList.toggle("investingLandingActive", page === "whatIsInvesting");
+  mainContainer.classList.toggle(
+    "investingLandingActive",
+    page === "whatIsInvesting" ||
+      page === "investingInStocks" ||
+      page === "howToStartInvesting"
+  );
   mainContainer.classList.toggle("acceptTermsActive", page === "accept-terms");
 
   const onStocksPage = page === "stocks" || page === "stockDetail";
